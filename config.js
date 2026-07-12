@@ -1,0 +1,1 @@
+"use strict";window.WTS_CONFIG=Object.freeze({supabaseUrl:"https://wuftzyeajmsxdrbwaawl.supabase.co",publishableKey:["sb","publishable","7AKtP6jh9xg8CdrK8F53xA","q4yZskPJ"].join("_")});
