@@ -1,0 +1,29 @@
+name: Validate Central Registry
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check application
+        run: |
+          test -s index.html
+          test -s styles.css
+          test -s config.js
+          test -s app.js
+          test -s manifest.webmanifest
+          test -s vercel.json
+          node --check config.js
+          node --check app.js
+          grep -q 'WTS Central Registry' index.html
+          grep -q 'school_registry_admin_read_api' app.js
+          grep -q 'school_registry_student_write_api' app.js
+          grep -q 'school_registry_staff_write_api' app.js
+          grep -q 'school_registry_guardian_write_api' app.js
+          if grep -RIn -E 'SUPABASE_SERVICE_ROLE_KEY|service_role_key|sb_secret_' . --exclude-dir=.git; then exit 1; fi
