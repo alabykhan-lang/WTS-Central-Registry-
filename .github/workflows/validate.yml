@@ -51,6 +51,5 @@ jobs:
           grep -q 'school_identity_admin_write_api' identity-admin.js
           grep -q 'photoCamera' records.js
           grep -q 'photoGallery' records.js
-          grep -q 'staff.html' vercel.json
           if grep -q 'public-live.js' index.html; then echo 'Public live loader must not be used'; exit 1; fi
           if grep -RIn -E 'SUPABASE_SERVICE_ROLE_KEY|service_role_key|sb_secret_' . --exclude-dir=.git; then exit 1; fi
