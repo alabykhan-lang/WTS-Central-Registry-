@@ -22,6 +22,9 @@ jobs:
           test -s bootstrap.js
           test -s identity-login.js
           test -s identity-admin.js
+          test -s staff.html
+          test -s staff-portal.css
+          test -s staff-portal.js
           test -s manifest.webmanifest
           test -s vercel.json
           node --check config.js
@@ -31,8 +34,12 @@ jobs:
           node --check bootstrap.js
           node --check identity-login.js
           node --check identity-admin.js
+          node --check staff-portal.js
           grep -q 'Central Registry Login' index.html
           grep -q 'class="locked"' index.html
+          grep -q 'Staff Profile Login' staff.html
+          grep -q 'school_staff_self_service_api' staff-portal.js
+          grep -q 'school_identity_portal_login' staff-portal.js
           grep -q 'school_registry_admin_read_api' records.js
           grep -q 'school_registry_student_write_api' records.js
           grep -q 'school_registry_staff_write_api' records.js
@@ -44,5 +51,6 @@ jobs:
           grep -q 'school_identity_admin_write_api' identity-admin.js
           grep -q 'photoCamera' records.js
           grep -q 'photoGallery' records.js
+          grep -q 'staff.html' vercel.json
           if grep -q 'public-live.js' index.html; then echo 'Public live loader must not be used'; exit 1; fi
           if grep -RIn -E 'SUPABASE_SERVICE_ROLE_KEY|service_role_key|sb_secret_' . --exclude-dir=.git; then exit 1; fi
