@@ -20,6 +20,8 @@ jobs:
           test -s records.js
           test -s access.js
           test -s bootstrap.js
+          test -s identity-login.js
+          test -s identity-admin.js
           test -s manifest.webmanifest
           test -s vercel.json
           node --check config.js
@@ -27,6 +29,8 @@ jobs:
           node --check records.js
           node --check access.js
           node --check bootstrap.js
+          node --check identity-login.js
+          node --check identity-admin.js
           grep -q 'Central Registry Login' index.html
           grep -q 'class="locked"' index.html
           grep -q 'school_registry_admin_read_api' records.js
@@ -35,6 +39,9 @@ jobs:
           grep -q 'school_registry_guardian_write_api' records.js
           grep -q 'school_portal_access_admin_read_api' access.js
           grep -q 'school_portal_access_admin_write_api' access.js
+          grep -q 'school_identity_portal_login' identity-login.js
+          grep -q 'school_identity_admin_read_api' identity-admin.js
+          grep -q 'school_identity_admin_write_api' identity-admin.js
           grep -q 'photoCamera' records.js
           grep -q 'photoGallery' records.js
           if grep -q 'public-live.js' index.html; then echo 'Public live loader must not be used'; exit 1; fi
