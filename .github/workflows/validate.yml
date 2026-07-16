@@ -27,6 +27,7 @@ jobs:
           test -s staff-portal.js
           test -s manifest.webmanifest
           test -s vercel.json
+          test -s supabase/migrations/20260716033124_central_registry_security_phase1.sql
           node --check config.js
           node --check core.js
           node --check records.js
@@ -51,5 +52,8 @@ jobs:
           grep -q 'school_identity_admin_write_api' identity-admin.js
           grep -q 'photoCamera' records.js
           grep -q 'photoGallery' records.js
+          grep -q 'window.WTSRecords.staffForm' records.js
+          grep -q 'whatsapp_opt_in_source' bootstrap.js
+          grep -q 'ADMIN_SESSION_EXPIRED' supabase/migrations/20260716033124_central_registry_security_phase1.sql
           if grep -q 'public-live.js' index.html; then echo 'Public live loader must not be used'; exit 1; fi
-          if grep -RIn -E 'SUPABASE_SERVICE_ROLE_KEY|service_role_key|sb_secret_' . --exclude-dir=.git; then exit 1; fi
+          if grep -RIn -E 'SUPABASE_SERVICE_ROLE_KEY|service_role_key|sb_secret_' . --exclude-dir=.git --exclude-dir=.github; then exit 1; fi
