@@ -1,29 +1,33 @@
 # WTS Identity and Access Integration Rollback Plan
 
-## Scope of this release
+## Scope
 
-The identity/access migration is additive. It adds access-control metadata, guarded management APIs and public-directory approval fields. It does not delete or update result scores, students, guardians, existing staff profiles, existing account links or password hashes.
+The unified workspace and recovery correction is additive. It changes no student, guardian, staff-person, grant, score or report-card record by default. The new migration adds guarded functions, internal recovery logic and permission-filtered workspace reads.
 
 ## Safe rollback order
 
-1. Disable the new WTS School Platform sign-in/workspace links if a user-facing issue appears.
-2. Keep the pre-existing Central Registry login and legacy Result Portal operational.
-3. Revoke execute from the three new guarded RPCs if an API-level issue is found:
-   - `school_staff_workspace_read_api`
-   - `school_access_management_read_api`
-   - `school_access_management_write_api`
-4. Preserve all `school_registry_audit` events; do not delete historical audit data.
-5. If required, disable use of new role/scope records in the Central Registry UI while retaining the records for investigation.
-6. Only after a confirmed dependency review, drop new indexes, functions and tables in reverse dependency order. Do not remove the public-directory fields or revocation columns until the deployed application no longer references them.
+1. Stop linking users to the affected WTS Workspace deployment if a user-facing issue appears.
+2. Keep the pre-existing Central Registry login and separately protected Result Portal available.
+3. Remove the bootstrap environment secret immediately if bootstrap recovery was initiated and recovery is not continuing. Do not publish or retain any temporary credential in source control or logs.
+4. Revoke execute from `school_identity_issue_temporary_password` and `school_identity_bootstrap_reset` for the service role if the recovery API must be stopped.
+5. Disable the platform identity/access API routes or deploy the prior platform build if the server route is at fault. Preserve audit events.
+6. If necessary, restore the previous `school_staff_workspace_read_api` implementation only after checking that the new module visibility response is no longer consumed by the deployed platform.
+7. Do not drop `school_identity_accounts`, `school_identity_credentials`, staff profiles, grants or audit history.
+8. Any database object removal must be a separately reviewed migration in reverse dependency order. Never use an ad-hoc destructive reset against the production database.
 
 ## Recovery guarantees
 
-- Existing `school_access_grants` are retained.
-- Existing Central Registry primary-administrator protection remains.
-- Existing staff credentials are not reset.
-- Existing Result Portal tables and report-card generation are untouched.
-- Result data can be verified before and after rollback with counts only; do not alter scores for testing.
+- The confirmed existing identity and person ID are preserved.
+- Existing grants and Result Portal credentials are not recreated or replaced by rollback.
+- Reset audit records are retained.
+- Reset sessions are invalidated by the recovery functions; rollback does not silently reactivate them.
+- Password hashes are not exported or restored through repository files.
+- Existing Result data and report-card generation remain untouched.
 
-## Known non-rollback item
+## Bootstrap-specific recovery
 
-The legacy Result Portal has RLS disabled on its core direct-access tables. This release intentionally does not turn RLS on, because doing so before replacing its direct browser calls would interrupt live result operations. Its dedicated hardening migration must be tested separately with a staged rollback plan.
+The bootstrap function refuses a second issuance after its metadata is marked. If the owner receives a temporary credential but cannot complete recovery, the owner should remove the bootstrap environment secret, preserve the audit event and obtain an explicitly approved next step. No second super-admin account should be created, and no direct hash manipulation should be used.
+
+## Result Portal boundary
+
+The legacy Result Portal’s RLS-disabled direct browser access is not changed by this rollback plan. Its hardening release must have its own staged migration and rollback because enabling RLS before protected compatibility APIs are ready could interrupt live result operations.

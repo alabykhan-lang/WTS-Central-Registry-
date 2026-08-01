@@ -2,91 +2,79 @@
 
 ## Status
 
-Implemented as an additive Central Registry access layer. No staff record, password hash, Result Portal account, student record, score, or report-card data was migrated or replaced.
+The Central Registry remains the authority for real staff identity, credentials, employment and module grants. The unified WTS Workspace consumes this authority; it does not create a parallel Staff or Management identity.
 
-## Confirmed identity chain
+No staff record, person ID, password hash, Result Portal account, student record, score or report-card data is recreated by the recovery integration.
 
-The current staff identity path is:
+## Identity chain and current credential system
 
-`school_people` → `staff_attendance_profiles` → `school_identity_accounts` → `school_identity_credentials`.
+The real identity path is:
 
-The Result Portal’s existing legacy profile is linked through `school_identity_accounts.legacy_user_profile_id` and `staff_attendance_profiles.user_profile_id`.
+`school_people` → `staff_attendance_profiles` → `school_identity_accounts` → `school_identity_credentials`
 
-At implementation time, every active Central Registry staff profile had all four links. Native Supabase Auth is **not** yet the shared identity source: `auth.users` contained no users. The currently working staff authentication method is the guarded Central Registry credential flow:
+The current staff sign-in functions are:
 
 - `school_identity_portal_login`
 - `school_identity_change_password`
 - `school_identity_portal_logout`
+- `school_identity_current_staff_session`
 
-It verifies active person status, active employment, identity-account status, credential status, password hash, lockout status and an active portal grant. It does not expose a service-role key.
+The WTS School Platform calls `school_identity_portal_login` with `p_app_code = staff_self_service`. It verifies person status, active employment, account status, credential state, lock state and an active grant before issuing an opaque transition session. Native Supabase Auth is not yet the shared staff population.
 
-## Existing authoritative fields
+The Central Registry credential is independent of the legacy Result Portal password. Existing Result credentials are not copied, reset or assumed to match.
 
-| Concern | Actual current source |
-| --- | --- |
-| Staff ID | `staff_attendance_profiles.id` and `staff_number` |
-| Person identity | `school_people.id` |
-| Employment status | `staff_attendance_profiles.employment_status` and `registration_status` |
-| Official position | `staff_attendance_profiles.designation` |
-| Staff category | `staff_attendance_profiles.staff_category` |
-| Identity account | `school_identity_accounts` |
-| Credential lifecycle | `school_identity_credentials` |
-| Current portal grant | `school_access_grants` |
-| Official person-role history | `school_person_roles` |
-| Existing audit history | `school_registry_audit` |
+## Confirmed existing account recovery state
 
-## Access-control extension
+The confirmed existing staff identity for the owner’s recovery procedure remains the same account and person record. Its grants are preserved. At verification time, the identity account and credential were active, compulsory password change was set, failed attempts were recorded and the previous temporary lock had expired. No password hash was exposed or changed directly.
 
-The 20260801010000 migration adds non-identity access records only:
+## Grant model
 
-- `school_system_role_catalog`: assignable responsibility labels.
-- `school_permission_catalog`: module/action permission codes.
-- `school_system_role_permissions`: non-effective guidance templates.
-- `school_staff_role_assignments`: one or more explicit system roles per person.
-- `school_staff_access_scopes`: class and subject boundaries per person and module.
+`school_access_grants` is the enforceable module boundary. Effective access requires:
 
-The subject scope reuses the existing `result_subject_catalog(class_key, subject_index)`. No subject list was invented or duplicated.
+1. active staff identity and employment;
+2. active identity account and credential;
+3. active, currently valid module grant;
+4. exact action permission; and
+5. active class/subject scope where a specialist system requires it.
 
-`school_access_grants` remains the enforceable module grant and now records revocation actor, time and reason. A role assignment does not automatically create a module grant. Management must grant the module and selected actions separately.
+Role labels and role-permission templates are descriptive. Assigning a role does not create an effective module grant.
 
-All new tables have RLS enabled and no direct browser-table policy. Browser calls use only guarded RPCs that authenticate the Central Registry session and make server-side permission decisions:
+The unified workspace filters its module directory from active grants. Management authority is represented by permissions such as `access.manage`; there is no separate management workspace.
 
-- `school_staff_workspace_read_api`
-- `school_access_management_read_api`
-- `school_access_management_write_api`
+## Protected password reset
 
-## Management workflow
+Migration `20260801160000_secure_identity_recovery_and_unified_workspace` adds:
 
-1. Search active staff in Central Registry → Portal Access.
-2. Open the staff access profile.
-3. Review employment, identity-account state, current module grants, roles, scopes and audit events.
-4. Optionally assign a responsibility role. This alone grants no action.
-5. Grant or revoke a module; select individual permitted actions and effective/expiry dates.
-6. Assign or revoke real Result Portal classes and subjects from the existing catalog.
-7. Suspend or restore the Central identity account without changing its password.
-8. Review the recorded audit history.
+- `wts_internal.issue_temporary_credential`, a non-exposed implementation function;
+- `school_identity_issue_temporary_password`, callable only by the server-side service-role route after the live admin session is checked;
+- `school_identity_bootstrap_reset`, restricted to the one confirmed existing bootstrap target;
+- a revised password-change function that clears the compulsory state and records bootstrap completion without storing a password.
 
-Every change records actor, timestamp, reason, before/after data and request identifier in `school_registry_audit`.
+The reset operates on the existing account and credential rows. It issues a temporary credential once, sets `must_change_password`, clears failed attempts and expired locks, preserves grants and person IDs, invalidates opaque sessions for the target identity, and records actor, timestamp, reason, request ID and safe before/after status in `school_registry_audit`.
 
-## Super-admin protection and recovery
+Neither password hashes nor plain-text temporary passwords are stored in audit metadata, repository files, browser storage or application logs. The old public execution privilege on `school_identity_admin_write_api` is revoked so its password-generating reset path cannot be called by anonymous or ordinary authenticated browser clients.
 
-The confirmed existing Central Registry primary administrator is preserved through the existing primary-registry grant metadata. The new management API rejects ordinary suspension or revocation of that primary authority.
+## One-time bootstrap procedure
 
-Emergency recovery procedure:
+The bootstrap path targets only the confirmed existing account and refuses any other staff number/email pair. It does not create a second administrator or alter grants.
 
-1. Use the existing primary administrator’s Central Registry identity.
-2. Restore a suspended account or role/module grant in Portal Access.
-3. If the primary account itself is unavailable, use the Supabase project owner through a controlled database change, record the reason in `school_registry_audit`, and rotate/verify the affected credential outside source control.
-4. Do not reset or disclose passwords in source code, browser URLs, documentation or audit notes.
+The authorised owner must set the server-only Supabase service key and a newly generated one-time bootstrap secret in the WTS School Platform production environment. From a private device, the owner calls the protected same-origin bootstrap route with that secret and an operational reason, receives the temporary credential once through the private response, signs in, completes the forced password change and immediately removes the bootstrap secret from the deployment environment. Account metadata records issuance/completion and prevents a second issuance.
 
-## Public directory preparation
+The temporary credential is never included in source control, Vercel logs, public documentation or audit metadata.
 
-`staff_attendance_profiles` now has explicit public-directory approval fields:
+## Session invalidation and audit
 
-- `public_visibility_approved`
-- `public_display_name`
-- `public_display_role`
-- `public_display_order`
-- approval actor and timestamp
+Password reset, password activation and account/grant suspension suspend the existing opaque attendance-admin client sessions for the affected person and replace the stored secret hash with a new random value. Logout also suspends the session. Subsequent workspace reads must fail with an inactive-session result.
 
-An active employment record is never public by default. The current public website directory remains unchanged until a later approved synchronisation uses these fields and an approved photograph.
+Audit entries retain the actor, action, target, reason, request ID and safe state transition. They intentionally omit passwords and password hashes.
+
+## Result transition
+
+The Result Portal remains operational but has a separate legacy browser-local credential/session flow. Central Registry grants determine whether the Results module is shown in WTS Workspace; the legacy Result Portal still performs its own login until its APIs, session, action checks and RLS are hardened.
+
+## Remaining security risks
+
+- The legacy Result Portal directly accesses core tables while RLS is disabled; this requires a dedicated compatibility migration.
+- The current opaque transition session is not the final shared httpOnly authentication architecture.
+- Bootstrap environment configuration must be completed by the authorised owner and removed after recovery.
+- Off-boarding and delegated approval policy still require management confirmation.
