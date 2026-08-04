@@ -42,12 +42,11 @@ $('#studentFind').onclick=R.loadStudents;$('#staffFind').onclick=R.loadStaff;$('
 $('#studentClass').onchange=R.loadStudents;$('#studentStatus').onchange=R.loadStudents;$('#staffStatus').onchange=R.loadStaff;
 $('#refresh').onclick=()=>R.loadContext().then(()=>state.views[state.currentView]?.()).catch(e=>{toast(e.message,'error');if(/AUTH|PERMISSION|login/i.test(e.message))signOut()});
 $('#login').onclick=signOut;
-$('#gateForm').onsubmit=e=>{e.preventDefault();$('#authError').textContent='Connecting…';sessionStorage.setItem(W.STORE,JSON.stringify({code:$('#adminCode').value.trim(),secret:$('#adminSecret').value}));R.loadContext().then(()=>{$('#authError').textContent='';toast('Central Registry opened.','success')}).catch(err=>{sessionStorage.removeItem(W.STORE);W.connected(false,err.message);$('#adminSecret').value=''})};
+$('#gateForm').onsubmit=e=>{e.preventDefault();$('#authError').textContent='Connectingâ€¦';sessionStorage.setItem(W.STORE,JSON.stringify({code:$('#adminCode').value.trim(),secret:$('#adminSecret').value}));R.loadContext().then(()=>{$('#authError').textContent='';toast('Central Registry opened.','success')}).catch(err=>{sessionStorage.removeItem(W.STORE);W.connected(false,err.message);$('#adminSecret').value=''})};
 $('#recordForm').onsubmit=async e=>{e.preventDefault();if(!state.handler)return;$('#saveRecord').disabled=true;try{await state.handler(e.currentTarget);$('#formDialog').close()}catch(err){toast(err.message,'error')}finally{$('#saveRecord').disabled=false}};
 W.connected(false);try{const a=auth();$('#adminCode').value=a.code;R.loadContext().catch(()=>signOut())}catch{$('#adminCode').focus()}
-// Password reset/temporary credential generation is intentionally not loaded
-// into the management browser. Access suspension and restoration are handled
-// through the audited access-management API; credential recovery stays in the
-// controlled school-administration process.
+// Identity administration is loaded only after the Central Registry shell is
+// present. Credential issuance itself uses the secure HttpOnly session route.
 for(const src of ['/identity-login.js','/identity-admin.js']){const script=document.createElement('script');script.src=src;script.async=true;document.head.appendChild(script)}
 })();
+

@@ -9,7 +9,17 @@
   let oneTimeCredentialStaffId = null;
 
   const read = (action, payload = {}) => rpc("school_identity_admin_read_api", action, payload);
-  const write = (action, payload = {}) => rpc("school_identity_management_write_api", action, payload);
+  async function write(action, payload = {}) {
+    const response = await fetch("/api/registry-management", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ operation: "credentialWrite", action, payload }),
+    });
+    const result = await response.json().catch(() => ({ ok: false, code: "REGISTRY_MANAGEMENT_INVALID_RESPONSE" }));
+    if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || "REGISTRY_MANAGEMENT_FAILED"), { code: result?.code });
+    return result;
+  }
 
   async function loadAccounts(force = false) {
     if (loading || (accounts.length && !force)) return;
@@ -89,3 +99,4 @@
 
   install();
 })();
+
