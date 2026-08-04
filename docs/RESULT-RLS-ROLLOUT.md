@@ -16,15 +16,15 @@ boundary. No raw session secret is returned by these adapters.
 
 | Table | Reads | Writes | Protected replacement | RLS migration | Rollback prepared |
 | --- | --- | --- | --- | --- | --- |
-| `user_profiles` | `admin.users.read` | `admin.role.update` | `school_result_api` | `20260804131000` | Yes |
-| `invite_codes` | `admin.invite.read` | `admin.invite.rotate` | `school_result_api` | `20260804131100` | Yes |
-| `settings` | settings adapter | settings adapter | `school_result_settings_read`, `school_result_app_config_update` | `20260804131200` | Yes |
-| `published_subjects` | protected Result read | publish/unpublish adapter | `school_result_read_api`, `school_result_api` | `20260804131300` | Yes |
-| `scores` | protected Result read | `scores.enter` adapter | `school_result_read_api`, `school_result_api` | `20260804131400` | Yes |
-| `remarks` | protected Result read | `school_result_remarks_update` | protected Result adapters | `20260804131500` | Yes |
-| `traits` | protected Result read | `school_result_traits_update` | protected Result adapters | `20260804131600` | Yes |
-| `fees` | protected Result read | `school_result_fees_update` | protected Result adapters | `20260804131700` | Yes |
-| `students` | protected Result read | `students.upsert`, `students.archive` | `school_result_read_api`, `school_result_api` | `20260804131800` | Yes |
+| `user_profiles` | `admin.users.read` | `admin.role.update` | `school_result_api` | `20260804131000` | Enabled, HTTP 401 direct REST |
+| `invite_codes` | `admin.invite.read` | `admin.invite.rotate` | `school_result_api` | `20260804131100` | Enabled, HTTP 401 direct REST |
+| `settings` | settings adapter | settings adapter | `school_result_settings_read`, `school_result_app_config_update` | `20260804131200` | Enabled, HTTP 401 direct REST |
+| `published_subjects` | protected Result read | publish/unpublish adapter | `school_result_read_api`, `school_result_api` | `20260804131300` | Enabled, HTTP 401 direct REST |
+| `scores` | protected Result read | `scores.enter` adapter | `school_result_read_api`, `school_result_api` | `20260804131400` | Enabled, HTTP 401 direct REST |
+| `remarks` | protected Result read | `school_result_remarks_update` | protected Result adapters | `20260804131500` | Enabled, HTTP 401 direct REST |
+| `traits` | protected Result read | `school_result_traits_update` | protected Result adapters | `20260804131600` | Enabled, HTTP 401 direct REST |
+| `fees` | protected Result read | `school_result_fees_update` | protected Result adapters | `20260804131700` | Enabled, HTTP 401 direct REST |
+| `students` | protected Result read | `students.upsert`, `students.archive` | `school_result_read_api`, `school_result_api` | `20260804131800` | Enabled, HTTP 401 direct REST |
 
 The `classes` and `subjects` catalog tables were already behind the Central
 Registry scope adapter and are not changed by this rollout. Report cards,
@@ -41,3 +41,8 @@ workflow fails, stop at that table and use the rollback reference rather than
 opening all Result tables again.
 
 Rollback SQL is recorded in `supabase/rollback/RESULT-RLS-ROLLBACK.sql`.
+
+The post-rollout counts matched the pre-rollout baseline: students 798,
+scores 14303, traits 17520, remarks 757, fees 757, published subjects 300,
+Result profiles 25, invite codes 1, active Result grants 25 and active Result
+scopes 0. No academic or identity record was changed by the rollout.
