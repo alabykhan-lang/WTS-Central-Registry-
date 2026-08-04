@@ -5,8 +5,11 @@
   const { $, state, esc, toast, rpc } = W;
   let accounts = [];
   let loading = false;
+  let oneTimeCredential = null;
+  let oneTimeCredentialStaffId = null;
 
   const read = (action, payload = {}) => rpc("school_identity_admin_read_api", action, payload);
+  const write = (action, payload = {}) => rpc("school_identity_management_write_api", action, payload);
 
   async function loadAccounts(force = false) {
     if (loading || (accounts.length && !force)) return;
@@ -29,6 +32,10 @@
     if (!state.selectedAccess || $("#accessDetail")?.hidden) return;
     await loadAccounts();
     const current = accountFor(state.selectedAccess);
+    if (oneTimeCredentialStaffId !== state.selectedAccess) {
+      oneTimeCredential = null;
+      oneTimeCredentialStaffId = state.selectedAccess;
+    }
     let card = $("#identityAccountCard");
     if (!card) {
       card = document.createElement("article");
@@ -47,7 +54,26 @@
       <header><strong>Central staff login</strong><span class="badge ${status === "active" && !locked ? "active" : "revoked"}">${esc(locked ? "locked" : status)}</span></header>
       <p>Login name: <strong>${esc(current.login_name || current.staff_number)}</strong></p>
       <p>Account status: <strong>${esc(accountStatus)}</strong>. Credential state: <strong>${esc(current.must_change_password ? "password change required" : "active")}</strong>.</p>
-      <div class="portal-controls"><small>Password activation and recovery are now handled in the protected WTS Workspace System Administration module. That flow requires a live access-management grant, records an audit event and never displays a password hash.</small></div>`;
+      <div class="portal-controls"><small>Password activation and recovery use the existing person identity. Issuing a new one-time credential clears expired lock state, requires a password change at first login, revokes existing sessions and records the initiating administrator.</small><label>Reason for activation or recovery<input id="credentialReason" placeholder="At least 8 characters" maxlength="500"></label><button type="button" class="primary" id="issueCredential">Issue one-time credential</button><div id="credentialResult">${oneTimeCredential ? `<div class="credential-one-time"><strong>Display once through an approved private channel.</strong><p>Login: <code>${esc(oneTimeCredential.loginName)}</code></p><p>Temporary password: <code>${esc(oneTimeCredential.password)}</code></p><small>Password change is compulsory at first login. This value is not stored by the Registry interface.</small></div>` : ""}</div></div>`;
+    $("#issueCredential").onclick = async () => {
+      const reason = $("#credentialReason").value.trim();
+      if (reason.length < 8) {
+        toast("Enter a reason of at least 8 characters.", "error");
+        return;
+      }
+      const button = $("#issueCredential");
+      button.disabled = true;
+      try {
+        const result = await write("issueTemporaryCredential", { staffId: state.selectedAccess, reason });
+        oneTimeCredential = { loginName: result.login_name || current.login_name || current.staff_number, password: result.temporary_password || "Unavailable" };
+        await loadAccounts(true);
+        await render();
+      } catch (error) {
+        toast(error instanceof Error ? error.message : "Credential recovery failed.", "error");
+      } finally {
+        button.disabled = false;
+      }
+    };
   }
 
   function install() {

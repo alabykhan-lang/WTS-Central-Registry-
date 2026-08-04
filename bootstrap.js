@@ -49,5 +49,5 @@ W.connected(false);try{const a=auth();$('#adminCode').value=a.code;R.loadContext
 // into the management browser. Access suspension and restoration are handled
 // through the audited access-management API; credential recovery stays in the
 // controlled school-administration process.
-for(const src of ['/identity-login.js']){const script=document.createElement('script');script.src=src;script.async=true;document.head.appendChild(script)}
+for(const src of ['/identity-login.js','/identity-admin.js']){const script=document.createElement('script');script.src=src;script.async=true;document.head.appendChild(script)}
 })();

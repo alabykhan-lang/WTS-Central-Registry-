@@ -7,6 +7,8 @@
   const { $, $$, state, esc, toast, rpc, registerView } = W;
   const read = (action, payload = {}) => rpc("school_access_management_read_api", action, payload);
   const write = (action, payload) => rpc("school_access_management_write_api", action, payload);
+  const scopeRead = (action, payload = {}) => rpc("school_access_management_scope_read_api", action, payload);
+  const scopeWrite = (action, payload = {}) => rpc("school_access_management_scope_write_api", action, payload);
   let catalog = null;
 
   const empty = (message) => `<div class="empty">${esc(message)}</div>`;
@@ -18,7 +20,7 @@
   }
 
   async function loadCatalog() {
-    if (!catalog) catalog = await read("catalog");
+    if (!catalog) catalog = await scopeRead("catalog");
     return catalog;
   }
 
@@ -83,10 +85,13 @@
 
   function renderScopes(profile) {
     const scopes = profile.scopes || [];
+    const context = profile.result_context || catalog.result_context || {};
+    const session = context.academic_session || "";
+    const term = context.term || "";
     const classes = `<option value="">Select class</option>${(catalog.classes || []).map((item) => `<option value="${esc(item.class_key)}">${esc(item.display_name)}</option>`).join("")}`;
-    return `<article class="accessPanel"><header><div><p class="panelEyebrow">RESULTS SCOPE</p><h3>Classes and subjects</h3></div></header><p>These scopes are the future server-side boundaries for Result Portal work. They do not change existing scores or class records.</p>
-      <div class="assignmentForm scopesForm"><label>Class<select id="scopeClassSelect">${classes}</select></label><label>Subject<select id="scopeSubjectSelect" disabled><option value="">Select a class first</option></select></label><label>Effective from<input id="scopeFrom" type="datetime-local"></label><label>Expires (optional)<input id="scopeUntil" type="datetime-local"></label><label class="full">Reason<input id="scopeReason" placeholder="Reason for this class or subject assignment"></label><div class="scopeButtons"><button type="button" class="primary" data-assign-class>Assign whole class</button><button type="button" class="ghost" data-assign-subject>Assign selected subject</button></div></div>
-      <div class="assignmentList">${scopes.length ? scopes.map((scope) => `<div class="assignmentRow"><div><strong>${esc(scope.display_name)}${scope.scope_type === "subject" ? ` · ${esc(scope.subject_name)}` : " · Whole class"}</strong><small>${esc(scope.scope_status)} · from ${formatDate(scope.effective_from)}${scope.effective_until ? ` · until ${formatDate(scope.effective_until)}` : ""}</small></div>${scope.scope_status === "active" ? `<button type="button" class="ghost" data-revoke-scope="${scope.id}">Revoke</button>` : ""}</div>`).join("") : empty("No class or subject has been assigned to this staff member.")}</div>
+    return `<article class="accessPanel"><header><div><p class="panelEyebrow">RESULTS SCOPE</p><h3>Classes and subjects</h3></div></header><p>Result access is restricted by the saved class, subject, academic session and term. No assignment gives no teacher access.</p>
+      <div class="assignmentForm scopesForm"><label>Academic session<input id="scopeSession" value="${esc(session)}" placeholder="e.g. 2025/2026" required></label><label>Term<select id="scopeTerm"><option value="1st Term" ${term === "1st Term" ? "selected" : ""}>1st Term</option><option value="2nd Term" ${term === "2nd Term" ? "selected" : ""}>2nd Term</option><option value="3rd Term" ${term === "3rd Term" ? "selected" : ""}>3rd Term</option></select></label><label>Class<select id="scopeClassSelect">${classes}</select></label><label>Subject<select id="scopeSubjectSelect" disabled><option value="">Select a class first</option></select></label><label>Effective from<input id="scopeFrom" type="datetime-local"></label><label>Expires (optional)<input id="scopeUntil" type="datetime-local"></label><label class="full">Reason<input id="scopeReason" placeholder="Reason for this class or subject assignment" required></label><div class="scopeButtons"><button type="button" class="primary" data-assign-class>Assign whole class</button><button type="button" class="ghost" data-assign-subject>Assign selected subject</button></div></div>
+      <div class="assignmentList">${scopes.length ? scopes.map((scope) => `<div class="assignmentRow"><div><strong>${esc(scope.display_name)}${scope.scope_type === "subject" ? ` · ${esc(scope.subject_name)}` : " · Whole class"}</strong><small>${esc(scope.scope_status)} · ${esc(scope.academic_session || "Any session")} · ${esc(scope.term || "Any term")} · from ${formatDate(scope.effective_from)}${scope.effective_until ? ` · until ${formatDate(scope.effective_until)}` : ""}</small></div>${scope.scope_status === "active" ? `<button type="button" class="ghost" data-revoke-scope="${scope.id}">Revoke</button>` : ""}</div>`).join("") : empty("No class or subject has been assigned to this staff member.")}</div>
     </article>`;
   }
 
@@ -130,7 +135,7 @@
     $$('[data-revoke-scope]').forEach((button) => {
       button.onclick = () => {
         const scope = (profile.scopes || []).find((item) => item.id === button.dataset.revokeScope);
-        if (scope) perform("setScope", { staffId: state.selectedAccess, appCode: scope.app_code, scopeType: scope.scope_type, classKey: scope.class_key, subjectIndex: scope.subject_index, enabled: false, reason: "Scope revoked by management" });
+        if (scope) perform("setScope", { staffId: state.selectedAccess, appCode: scope.app_code, scopeType: scope.scope_type, classKey: scope.class_key, subjectIndex: scope.subject_index, academicSession: scope.academic_session || "", term: scope.term || "", enabled: false, reason: "Scope revoked by management" });
       };
     });
     $("[data-account-status]").onclick = () => perform("setAccountStatus", { staffId: state.selectedAccess, accountStatus: $("[data-account-status]").dataset.accountStatus, reason: "Portal account status changed by management" });
@@ -144,12 +149,19 @@
       toast(scopeType === "subject" ? "Select a class and subject first." : "Select a class first.", "error");
       return;
     }
-    perform("setScope", { staffId: state.selectedAccess, appCode: "results", scopeType, classKey, subjectIndex: scopeType === "subject" ? subjectIndex : "", enabled: true, effectiveFrom: $("#scopeFrom").value, expiresAt: $("#scopeUntil").value, reason: $("#scopeReason").value.trim() });
+    const academicSession = $("#scopeSession").value.trim();
+    const term = $("#scopeTerm").value;
+    const reason = $("#scopeReason").value.trim();
+    if (!academicSession || !term || !reason) {
+      toast("Academic session, term and reason are required.", "error");
+      return;
+    }
+    perform("setScope", { staffId: state.selectedAccess, appCode: "results", scopeType, classKey, subjectIndex: scopeType === "subject" ? subjectIndex : "", academicSession, term, enabled: true, effectiveFrom: $("#scopeFrom").value, expiresAt: $("#scopeUntil").value, reason });
   }
 
   async function perform(action, payload) {
     try {
-      const result = await write(action, payload);
+      const result = action === "setScope" ? await scopeWrite("setScope", payload) : await write(action, payload);
       toast(String(result.code || "Access updated").replaceAll("_", " ").toLowerCase(), "success");
       await selectStaff(state.selectedAccess);
       await load();
@@ -163,6 +175,9 @@
       await loadCatalog();
       state.selectedAccess = staffId;
       const profile = await read("staffAccessProfile", { staffId });
+      const scopedProfile = await scopeRead("staffAccessProfile", { staffId });
+      profile.scopes = scopedProfile.scopes || [];
+      profile.result_context = scopedProfile.result_context || catalog.result_context || {};
       const staff = profile.staff;
       $("#accessPlaceholder").hidden = true;
       $("#accessDetail").hidden = false;
