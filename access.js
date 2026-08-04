@@ -4,11 +4,9 @@
   const W = window.WTSRegistry;
   if (!W) return;
 
-  const { $, $$, state, esc, toast, rpc, registerView } = W;
-  const read = (action, payload = {}) => rpc("school_access_management_read_api", action, payload);
-  const write = (action, payload) => rpc("school_access_management_write_api", action, payload);
-  const legacyScopeRead = (action, payload = {}) => rpc("school_access_management_scope_read_api", action, payload);
-  const legacyScopeWrite = (action, payload = {}) => rpc("school_access_management_scope_write_api", action, payload);
+  const { $, $$, state, esc, toast, registerView } = W;
+  const read = (action, payload = {}) => secureManagement("scopeRead", action, payload);
+  const write = (action, payload = {}) => secureManagement("accessWrite", action, payload);
   async function secureManagement(operation, action, payload = {}) {
     const response = await fetch("/api/registry-management", {
       method: "POST",
@@ -20,10 +18,10 @@
     if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || "REGISTRY_MANAGEMENT_FAILED"), { code: result?.code });
     return result;
   }
-  const canUseLegacyFallback = (error) => ["REGISTRY_SESSION_REQUIRED", "RESULT_SESSION_NOT_ACTIVE", "REGISTRY_MANAGEMENT_SERVICE_UNAVAILABLE"].includes(error?.code);
-  const scopeRead = (action, payload = {}) => secureManagement("scopeRead", action, payload).catch((error) => canUseLegacyFallback(error) ? legacyScopeRead(action, payload) : Promise.reject(error));
-  const scopeWrite = (action, payload = {}) => secureManagement("scopeWrite", action, payload).catch((error) => canUseLegacyFallback(error) ? legacyScopeWrite(action, payload) : Promise.reject(error));
+  const scopeRead = (action, payload = {}) => secureManagement("scopeRead", action, payload);
+  const scopeWrite = (action, payload = {}) => secureManagement("scopeWrite", action, payload);
   let catalog = null;
+  let scopeEditId = "";
 
   const empty = (message) => `<div class="empty">${esc(message)}</div>`;
   const formatDate = (value) => value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "Not set";
@@ -44,7 +42,7 @@
       const data = await read("staff", { search: $("#accessSearch").value.trim() });
       state.accessStaff = data.staff || [];
       $("#accessStaffList").innerHTML = state.accessStaff.length
-        ? state.accessStaff.map((staff) => `<button type="button" class="access-person-button ${state.selectedAccess === staff.staff_id ? "active" : ""}" data-access-staff="${staff.staff_id}"><strong>${esc(staff.full_name)}</strong><small>${esc(staff.staff_number || "No staff number")} Â· ${esc(staff.designation || staff.staff_category || "Staff")}</small><small>${staff.active_module_count || 0} active module grant${staff.active_module_count === 1 ? "" : "s"}</small></button>`).join("")
+        ? state.accessStaff.map((staff) => `<button type="button" class="access-person-button ${state.selectedAccess === staff.staff_id ? "active" : ""}" data-access-staff="${staff.staff_id}"><strong>${esc(staff.full_name)}</strong><small>${esc(staff.staff_number || "No staff number")} · ${esc(staff.designation || staff.staff_category || "Staff")}</small><small>${staff.active_module_count || 0} active module grant${staff.active_module_count === 1 ? "" : "s"}</small></button>`).join("")
         : empty("No active staff member matched this search.");
       $$('[data-access-staff]').forEach((button) => { button.onclick = () => selectStaff(button.dataset.accessStaff); });
     } catch (error) {
@@ -61,7 +59,7 @@
     const permissions = (catalog.permissions || []).filter((permission) => permission.app_code === appCode);
     if (!permissions.length) return `<p class="accessHint">No action permissions are configured for this module yet.</p>`;
     const granted = new Set(grant?.permissions || []);
-    return `<fieldset class="permissionPicker"><legend>Action permissions</legend>${permissions.map((permission) => `<label><input type="checkbox" data-permission="${esc(permission.permission_code)}" ${granted.has(permission.permission_code) ? "checked" : ""}> <span>${esc(permission.module_name)} Â· ${esc(permission.action_code)}</span></label>`).join("")}</fieldset>`;
+    return `<fieldset class="permissionPicker"><legend>Action permissions</legend>${permissions.map((permission) => `<label><input type="checkbox" data-permission="${esc(permission.permission_code)}" ${granted.has(permission.permission_code) ? "checked" : ""}> <span>${esc(permission.module_name)} · ${esc(permission.action_code)}</span></label>`).join("")}</fieldset>`;
   }
 
   function moduleCard(portal, profile) {
@@ -77,7 +75,7 @@
         ${permissionPicker(portal.app_code, grant)}
         <div class="accessDateGrid"><label>Effective from<input type="datetime-local" data-module-from="${esc(portal.app_code)}" value="${dateValue(grant?.valid_from)}"></label><label>Expires (optional)<input type="datetime-local" data-module-until="${esc(portal.app_code)}" value="${dateValue(grant?.valid_until)}"></label></div>
         <label>Reason<input data-module-reason="${esc(portal.app_code)}" value="" placeholder="Required context for this access decision"></label>
-        <small class="accessMeta">${grant ? `Last state: ${esc(grant.grant_status)} Â· effective ${formatDate(grant.valid_from)}${grant.valid_until ? ` Â· expires ${formatDate(grant.valid_until)}` : ""}` : "No grant record exists."}</small>
+        <small class="accessMeta">${grant ? `Last state: ${esc(grant.grant_status)} · effective ${formatDate(grant.valid_from)}${grant.valid_until ? ` · expires ${formatDate(grant.valid_until)}` : ""}` : "No grant record exists."}</small>
         ${isSelfService ? "" : `<button class="primary" type="button" data-save-module="${esc(portal.app_code)}">Save module access</button>`}
       </div>
     </article>`;
@@ -86,9 +84,9 @@
   function renderRoleAssignments(profile) {
     const assigned = profile.role_assignments || [];
     const available = (catalog.roles || []).map((role) => `<option value="${esc(role.role_code)}">${esc(role.role_name)}</option>`).join("");
-    return `<article class="accessPanel"><header><div><p class="panelEyebrow">SYSTEM ROLES</p><h3>Responsibilities do not auto-grant access.</h3></div></header><p>Assign role labels for the staff memberâ€™s responsibility, then use the module cards above to grant each permitted action explicitly.</p>
+    return `<article class="accessPanel"><header><div><p class="panelEyebrow">SYSTEM ROLES</p><h3>Responsibilities do not auto-grant access.</h3></div></header><p>Assign role labels for the staff member’s responsibility, then use the module cards above to grant each permitted action explicitly.</p>
       <div class="assignmentForm"><label>Role<select id="systemRoleSelect">${available}</select></label><label>Effective from<input id="systemRoleFrom" type="datetime-local"></label><label>Expires (optional)<input id="systemRoleUntil" type="datetime-local"></label><label class="full">Reason<input id="systemRoleReason" placeholder="Reason for assigning this responsibility"></label><button type="button" class="primary" data-assign-role>Assign role</button></div>
-      <div class="assignmentList">${assigned.length ? assigned.map((role) => `<div class="assignmentRow"><div><strong>${esc(role.role_name)}</strong><small>${esc(role.assignment_status)} Â· from ${formatDate(role.effective_from)}${role.effective_until ? ` Â· until ${formatDate(role.effective_until)}` : ""}</small></div>${role.assignment_status === "active" ? `<button type="button" class="ghost" data-revoke-role="${esc(role.role_code)}">Revoke</button>` : ""}</div>`).join("") : empty("No system role has been explicitly assigned.")}</div>
+      <div class="assignmentList">${assigned.length ? assigned.map((role) => `<div class="assignmentRow"><div><strong>${esc(role.role_name)}</strong><small>${esc(role.assignment_status)} · from ${formatDate(role.effective_from)}${role.effective_until ? ` · until ${formatDate(role.effective_until)}` : ""}</small></div>${role.assignment_status === "active" ? `<button type="button" class="ghost" data-revoke-role="${esc(role.role_code)}">Revoke</button>` : ""}</div>`).join("") : empty("No system role has been explicitly assigned.")}</div>
     </article>`;
   }
 
@@ -104,8 +102,8 @@
     const term = context.term || "";
     const classes = `<option value="">Select class</option>${(catalog.classes || []).map((item) => `<option value="${esc(item.class_key)}">${esc(item.display_name)}</option>`).join("")}`;
     return `<article class="accessPanel"><header><div><p class="panelEyebrow">RESULTS SCOPE</p><h3>Classes and subjects</h3></div></header><p>Result access is restricted by the saved class, subject, academic session and term. No assignment gives no teacher access.</p>
-      <div class="assignmentForm scopesForm"><label>Academic session<input id="scopeSession" value="${esc(session)}" placeholder="e.g. 2025/2026" required></label><label>Term<select id="scopeTerm"><option value="1st Term" ${term === "1st Term" ? "selected" : ""}>1st Term</option><option value="2nd Term" ${term === "2nd Term" ? "selected" : ""}>2nd Term</option><option value="3rd Term" ${term === "3rd Term" ? "selected" : ""}>3rd Term</option></select></label><label>Class<select id="scopeClassSelect">${classes}</select></label><label>Subject<select id="scopeSubjectSelect" disabled><option value="">Select a class first</option></select></label><label>Effective from<input id="scopeFrom" type="datetime-local"></label><label>Expires (optional)<input id="scopeUntil" type="datetime-local"></label><label class="full">Reason<input id="scopeReason" placeholder="Reason for this class or subject assignment" required></label><div class="scopeButtons"><button type="button" class="primary" data-assign-class>Assign whole class</button><button type="button" class="ghost" data-assign-subject>Assign selected subject</button></div></div>
-      <div class="assignmentList">${scopes.length ? scopes.map((scope) => `<div class="assignmentRow"><div><strong>${esc(scope.display_name)}${scope.scope_type === "subject" ? ` Â· ${esc(scope.subject_name)}` : " Â· Whole class"}</strong><small>${esc(scope.scope_status)} Â· ${esc(scope.academic_session || "Any session")} Â· ${esc(scope.term || "Any term")} Â· from ${formatDate(scope.effective_from)}${scope.effective_until ? ` Â· until ${formatDate(scope.effective_until)}` : ""}</small></div>${scope.scope_status === "active" ? `<button type="button" class="ghost" data-revoke-scope="${scope.id}">Revoke</button>` : ""}</div>`).join("") : empty("No class or subject has been assigned to this staff member.")}</div>
+      <div class="assignmentForm scopesForm"><input id="scopeEditId" type="hidden" value=""><label>Academic session<input id="scopeSession" value="${esc(session)}" placeholder="e.g. 2025/2026" required></label><label>Term<select id="scopeTerm"><option value="1st Term" ${term === "1st Term" ? "selected" : ""}>1st Term</option><option value="2nd Term" ${term === "2nd Term" ? "selected" : ""}>2nd Term</option><option value="3rd Term" ${term === "3rd Term" ? "selected" : ""}>3rd Term</option></select></label><label>Class<select id="scopeClassSelect">${classes}</select></label><label>Subject<select id="scopeSubjectSelect" disabled><option value="">Select a class first</option></select></label><label>Effective from<input id="scopeFrom" type="datetime-local"></label><label>Expires (optional)<input id="scopeUntil" type="datetime-local"></label><label class="full">Reason<input id="scopeReason" placeholder="Reason for this class or subject assignment" required></label><div class="scopeButtons"><button type="button" class="primary" data-assign-class>Assign whole class</button><button type="button" class="ghost" data-assign-subject>Assign selected subject</button></div></div>
+      <div class="assignmentList">${scopes.length ? scopes.map((scope) => `<div class="assignmentRow"><div><strong>${esc(scope.display_name)}${scope.scope_type === "subject" ? ` · ${esc(scope.subject_name)}` : " · Whole class"}</strong><small>${esc(scope.scope_status)} · ${esc(scope.academic_session || "Any session")} · ${esc(scope.term || "Any term")} · from ${formatDate(scope.effective_from)}${scope.effective_until ? ` · until ${formatDate(scope.effective_until)}` : ""}</small></div><div class="row-actions"><button type="button" class="ghost" data-edit-scope="${scope.id}">Edit</button>${scope.scope_status === "active" ? `<button type="button" class="ghost" data-revoke-scope="${scope.id}">Revoke</button>` : `<button type="button" class="primary" data-restore-scope="${scope.id}">Restore</button>`}</div></div>`).join("") : empty("No class or subject has been assigned to this staff member.")}</div>
     </article>`;
   }
 
@@ -117,12 +115,12 @@
 
   function renderDirectory(profile) {
     const staff = profile.staff;
-    return `<article class="accessPanel"><header><div><p class="panelEyebrow">PUBLIC STAFF DIRECTORY</p><h3>Explicit publication approval</h3></div></header><p>Active employment alone never publishes a staff member. This only prepares Central Registry data for the public directoryâ€™s later approved synchronisation.</p><div class="assignmentForm"><label class="switch-row">Approve public visibility <input id="directoryApproved" type="checkbox" ${staff.public_visibility_approved ? "checked" : ""}></label><label>Approved display name<input id="directoryName" value="${esc(staff.public_display_name || "")}" placeholder="Leave blank to use approved future mapping"></label><label>Approved role<input id="directoryRole" value="${esc(staff.public_display_role || "")}" placeholder="Public designation"></label><label>Display order<input id="directoryOrder" inputmode="numeric" value="${staff.public_display_order ?? ""}"></label><button type="button" class="ghost" data-save-directory>Save directory approval</button></div></article>`;
+    return `<article class="accessPanel"><header><div><p class="panelEyebrow">PUBLIC STAFF DIRECTORY</p><h3>Explicit publication approval</h3></div></header><p>Active employment alone never publishes a staff member. This only prepares Central Registry data for the public directory’s later approved synchronisation.</p><div class="assignmentForm"><label class="switch-row">Approve public visibility <input id="directoryApproved" type="checkbox" ${staff.public_visibility_approved ? "checked" : ""}></label><label>Approved display name<input id="directoryName" value="${esc(staff.public_display_name || "")}" placeholder="Leave blank to use approved future mapping"></label><label>Approved role<input id="directoryRole" value="${esc(staff.public_display_role || "")}" placeholder="Public designation"></label><label>Display order<input id="directoryOrder" inputmode="numeric" value="${staff.public_display_order ?? ""}"></label><button type="button" class="ghost" data-save-directory>Save directory approval</button></div></article>`;
   }
 
   function renderHistory(profile) {
     const history = profile.history || [];
-    return `<article class="accessPanel accessHistory"><header><div><p class="panelEyebrow">AUDIT HISTORY</p><h3>Every access decision is recorded.</h3></div></header>${history.length ? `<ol>${history.map((entry) => `<li><strong>${esc(entry.action.replaceAll("_", " ").replaceAll(".", " Â· "))}</strong><small>${formatDate(entry.created_at)} Â· ${esc(entry.entity_type)}</small></li>`).join("")}</ol>` : empty("No access-change history was found for this staff member.")}</article>`;
+    return `<article class="accessPanel accessHistory"><header><div><p class="panelEyebrow">AUDIT HISTORY</p><h3>Every access decision is recorded.</h3></div></header>${history.length ? `<ol>${history.map((entry) => `<li><strong>${esc(entry.action.replaceAll("_", " ").replaceAll(".", " · "))}</strong><small>${formatDate(entry.created_at)} · ${esc(entry.entity_type)}</small></li>`).join("")}</ol>` : empty("No access-change history was found for this staff member.")}</article>`;
   }
 
   function installHandlers(profile) {
@@ -149,7 +147,16 @@
     $$('[data-revoke-scope]').forEach((button) => {
       button.onclick = () => {
         const scope = (profile.scopes || []).find((item) => item.id === button.dataset.revokeScope);
-        if (scope) perform("setScope", { staffId: state.selectedAccess, appCode: scope.app_code, scopeType: scope.scope_type, classKey: scope.class_key, subjectIndex: scope.subject_index, academicSession: scope.academic_session || "", term: scope.term || "", enabled: false, reason: "Scope revoked by management" });
+        if (scope) perform("setScope", { staffId: state.selectedAccess, scopeId: scope.id, appCode: scope.app_code, scopeType: scope.scope_type, classKey: scope.class_key, subjectIndex: scope.subject_index, academicSession: scope.academic_session || "", term: scope.term || "", enabled: false, reason: "Scope revoked by management" });
+      };
+    });
+    $$('[data-edit-scope]').forEach((button) => {
+      button.onclick = () => editScope((profile.scopes || []).find((item) => item.id === button.dataset.editScope));
+    });
+    $$('[data-restore-scope]').forEach((button) => {
+      button.onclick = () => {
+        const scope = (profile.scopes || []).find((item) => item.id === button.dataset.restoreScope);
+        if (scope) perform("setScope", { staffId: state.selectedAccess, scopeId: scope.id, appCode: scope.app_code, scopeType: scope.scope_type, classKey: scope.class_key, subjectIndex: scope.subject_index, academicSession: scope.academic_session || "", term: scope.term || "", enabled: true, effectiveFrom: new Date().toISOString(), expiresAt: "", reason: "Scope restored by management" });
       };
     });
     $("[data-account-status]").onclick = () => perform("setAccountStatus", { staffId: state.selectedAccess, accountStatus: $("[data-account-status]").dataset.accountStatus, reason: "Portal account status changed by management" });
@@ -170,13 +177,29 @@
       toast("Academic session, term and reason are required.", "error");
       return;
     }
-    perform("setScope", { staffId: state.selectedAccess, appCode: "results", scopeType, classKey, subjectIndex: scopeType === "subject" ? subjectIndex : "", academicSession, term, enabled: true, effectiveFrom: $("#scopeFrom").value, expiresAt: $("#scopeUntil").value, reason });
+    perform("setScope", { staffId: state.selectedAccess, scopeId: $("#scopeEditId").value || "", appCode: "results", scopeType, classKey, subjectIndex: scopeType === "subject" ? subjectIndex : "", academicSession, term, enabled: true, effectiveFrom: $("#scopeFrom").value, expiresAt: $("#scopeUntil").value, reason });
+  }
+
+  function editScope(scope) {
+    if (!scope) return;
+    scopeEditId = scope.id;
+    $("#scopeEditId").value = scope.id;
+    $("#scopeSession").value = scope.academic_session || "";
+    $("#scopeTerm").value = scope.term || "";
+    $("#scopeClassSelect").value = scope.class_key || "";
+    $("#scopeClassSelect").dispatchEvent(new Event("change"));
+    $("#scopeSubjectSelect").value = scope.subject_index == null ? "" : String(scope.subject_index);
+    $("#scopeFrom").value = dateValue(scope.effective_from);
+    $("#scopeUntil").value = dateValue(scope.effective_until);
+    $("#scopeReason").value = scope.reason || "";
+    toast("Assignment loaded for editing.");
   }
 
   async function perform(action, payload) {
     try {
       const result = action === "setScope" ? await scopeWrite("setScope", payload) : await write(action, payload);
       toast(String(result.code || "Access updated").replaceAll("_", " ").toLowerCase(), "success");
+      scopeEditId = "";
       await selectStaff(state.selectedAccess);
       await load();
     } catch (error) {
@@ -196,7 +219,7 @@
       $("#accessPlaceholder").hidden = true;
       $("#accessDetail").hidden = false;
       $("#accessName").textContent = staff.full_name;
-      $("#accessMeta").textContent = `${staff.staff_number || "No staff number"} Â· ${staff.designation || staff.staff_category || "Staff"}`;
+      $("#accessMeta").textContent = `${staff.staff_number || "No staff number"} · ${staff.designation || staff.staff_category || "Staff"}`;
       $("#accessPhoto").src = safeImage("");
       $("#accessPhoto").alt = "";
       const modules = (catalog.portals || []).map((portal) => moduleCard(portal, profile)).join("");
@@ -210,4 +233,3 @@
   registerView("access", load);
   window.WTSAccess = { load, select: selectStaff };
 })();
-

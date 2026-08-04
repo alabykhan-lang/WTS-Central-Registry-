@@ -10,6 +10,8 @@ const ALLOWED_ORIGINS = new Set(['https://wts-central-registry.vercel.app']);
 const ROUTES = {
   scopeRead: 'school_access_management_scope_read_session_api',
   scopeWrite: 'school_access_management_scope_write_session_api',
+  accessWrite: 'school_access_management_write_session_api',
+  identityRead: 'school_identity_admin_read_session_api',
   credentialWrite: 'school_identity_management_session_write_api',
 };
 
@@ -93,4 +95,3 @@ module.exports = async function registryManagement(req, res) {
   if (!result?.ok) return send(res, statusFor(result?.code), result, statusFor(result?.code) === 401);
   return send(res, 200, result);
 };
-

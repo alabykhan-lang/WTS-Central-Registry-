@@ -2,13 +2,24 @@
 (() => {
   const W = window.WTSRegistry;
   if (!W) return;
-  const { $, state, esc, toast, rpc } = W;
+  const { $, state, esc, toast } = W;
   let accounts = [];
   let loading = false;
   let oneTimeCredential = null;
   let oneTimeCredentialStaffId = null;
 
-  const read = (action, payload = {}) => rpc("school_identity_admin_read_api", action, payload);
+  const read = (action, payload = {}) => secureManagement("identityRead", action, payload);
+  async function secureManagement(operation, action, payload = {}) {
+    const response = await fetch("/api/registry-management", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ operation, action, payload }),
+    });
+    const result = await response.json().catch(() => ({ ok: false, code: "REGISTRY_MANAGEMENT_INVALID_RESPONSE" }));
+    if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || "REGISTRY_MANAGEMENT_FAILED"), { code: result?.code });
+    return result;
+  }
   async function write(action, payload = {}) {
     const response = await fetch("/api/registry-management", {
       method: "POST",
@@ -99,4 +110,3 @@
 
   install();
 })();
-

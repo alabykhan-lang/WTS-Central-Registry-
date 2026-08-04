@@ -1,0 +1,45 @@
+-- Result RLS rollback reference.
+-- Review and approve before running. This restores the pre-Phase-3 public
+-- table privileges only; it does not restore browser authority or policies.
+
+-- Remove the deny policies and disable RLS for the named table.
+-- Repeat the block only for the table requiring rollback.
+--
+-- drop policy if exists result_user_profiles_server_adapter_only on public.user_profiles;
+-- alter table public.user_profiles disable row level security;
+-- grant select on table public.user_profiles to anon, authenticated;
+--
+-- drop policy if exists result_invite_codes_server_adapter_only on public.invite_codes;
+-- alter table public.invite_codes disable row level security;
+-- grant select on table public.invite_codes to anon, authenticated;
+--
+-- drop policy if exists result_settings_server_adapter_only on public.settings;
+-- alter table public.settings disable row level security;
+-- grant select, insert, update, delete on table public.settings to anon, authenticated;
+--
+-- drop policy if exists result_published_subjects_server_adapter_only on public.published_subjects;
+-- alter table public.published_subjects disable row level security;
+-- grant select on table public.published_subjects to anon, authenticated;
+--
+-- drop policy if exists result_scores_server_adapter_only on public.scores;
+-- alter table public.scores disable row level security;
+-- grant select, insert, update, delete on table public.scores to anon, authenticated;
+--
+-- drop policy if exists result_remarks_server_adapter_only on public.remarks;
+-- alter table public.remarks disable row level security;
+-- grant select, insert, update, delete on table public.remarks to anon, authenticated;
+--
+-- drop policy if exists result_traits_server_adapter_only on public.traits;
+-- alter table public.traits disable row level security;
+-- grant select, insert, update, delete on table public.traits to anon, authenticated;
+--
+-- drop policy if exists result_fees_server_adapter_only on public.fees;
+-- alter table public.fees disable row level security;
+-- grant select, insert, update, delete on table public.fees to anon, authenticated;
+--
+-- drop policy if exists result_students_server_adapter_only on public.students;
+-- alter table public.students disable row level security;
+-- grant select, insert, update, delete on table public.students to anon, authenticated;
+
+-- Do not restore these privileges as part of normal operation. The protected
+-- server adapters are the production path and keep the browser table surface closed.
