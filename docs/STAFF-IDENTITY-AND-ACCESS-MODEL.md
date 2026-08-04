@@ -48,6 +48,7 @@ Migration `20260801160000_secure_identity_recovery_and_unified_workspace` adds:
 - `wts_internal.issue_temporary_credential`, a non-exposed implementation function;
 - `school_identity_issue_temporary_password`, callable only by the server-side service-role route after the live admin session is checked;
 - `school_identity_bootstrap_reset`, restricted to the one confirmed existing bootstrap target;
+- `school_identity_bootstrap_reset_with_actor`, the service-only bootstrap wrapper used by the private operator recovery route;
 - a revised password-change function that clears the compulsory state and records bootstrap completion without storing a password.
 
 The reset operates on the existing account and credential rows. It issues a temporary credential once, sets `must_change_password`, clears failed attempts and expired locks, preserves grants and person IDs, invalidates opaque sessions for the target identity, and records actor, timestamp, reason, request ID and safe before/after status in `school_registry_audit`.
@@ -58,7 +59,7 @@ Neither password hashes nor plain-text temporary passwords are stored in audit m
 
 The bootstrap path targets only the confirmed existing account and refuses any other staff number/email pair. It does not create a second administrator or alter grants.
 
-The authorised owner must set the server-only Supabase service key and a newly generated one-time bootstrap secret in the WTS School Platform production environment. From a private device, the owner calls the protected same-origin bootstrap route with that secret and an operational reason, receives the temporary credential once through the private response, signs in, completes the forced password change and immediately removes the bootstrap secret from the deployment environment. Account metadata records issuance/completion and prevents a second issuance.
+The authorised owner must set the server-only Supabase service key and a newly generated one-time bootstrap secret in the WTS School Platform production environment. From a private device, the owner opens the unlinked `/portal/recovery` route, supplies that secret and an operational reason, receives the temporary credential once through the private response, signs in, completes the forced password change and immediately removes the bootstrap secret from the deployment environment. Account metadata records issuance/completion and prevents a second issuance.
 
 The temporary credential is never included in source control, Vercel logs, public documentation or audit metadata.
 
@@ -70,7 +71,7 @@ Audit entries retain the actor, action, target, reason, request ID and safe stat
 
 ## Result transition
 
-The Result Portal remains operational but has a separate legacy browser-local credential/session flow. Central Registry grants determine whether the Results module is shown in WTS Workspace; the legacy Result Portal still performs its own login until its APIs, session, action checks and RLS are hardened.
+The Result Portal remains operational with central WTS login as its normal public choice. Central Registry grants determine whether the Results module is shown in WTS Workspace. The old compatibility handler is retained only behind the audited, grant-checked `/api/result-emergency` route while the remaining Result security work is paused.
 
 ## Remaining security risks
 

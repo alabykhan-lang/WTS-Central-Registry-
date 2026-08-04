@@ -9,7 +9,7 @@ The unified workspace and recovery correction is additive. It changes no student
 1. Stop linking users to the affected WTS Workspace deployment if a user-facing issue appears.
 2. Keep the pre-existing Central Registry login and separately protected Result Portal available.
 3. Remove the bootstrap environment secret immediately if bootstrap recovery was initiated and recovery is not continuing. Do not publish or retain any temporary credential in source control or logs.
-4. Revoke execute from `school_identity_issue_temporary_password` and `school_identity_bootstrap_reset` for the service role if the recovery API must be stopped.
+4. Revoke execute from `school_identity_issue_temporary_password`, `school_identity_bootstrap_reset` and `school_identity_bootstrap_reset_with_actor` for the service role if the recovery API must be stopped.
 5. Disable the platform identity/access API routes or deploy the prior platform build if the server route is at fault. Preserve audit events.
 6. If necessary, restore the previous `school_staff_workspace_read_api` implementation only after checking that the new module visibility response is no longer consumed by the deployed platform.
 7. Do not drop `school_identity_accounts`, `school_identity_credentials`, staff profiles, grants or audit history.
