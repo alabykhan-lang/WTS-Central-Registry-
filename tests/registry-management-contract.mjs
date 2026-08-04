@@ -21,4 +21,3 @@ await expect('disallowed origin', `${base}/api/registry-management`, {
 }, 403, 'ORIGIN_NOT_ALLOWED');
 
 console.log('Central Registry management contract passed');
-

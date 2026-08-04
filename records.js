@@ -4,9 +4,9 @@
     { $, $$, state, esc, toast, registryRequest, registerView, form, field, select, vals } =
       W;
   const read = (a, p = {}) => registryRequest("adminRead", a, p),
-    studentWrite = (a, p = {}) => registryRequest("studentWrite", a, p),
-    staffWrite = (a, p = {}) => registryRequest("staffWrite", a, p),
-    guardianWrite = (a, p = {}) => registryRequest("guardianWrite", a, p);
+    studentWrite = (a, p) => registryRequest("studentWrite", a, p),
+    staffWrite = (a, p) => registryRequest("staffWrite", a, p),
+    guardianWrite = (a, p) => registryRequest("guardianWrite", a, p);
   async function loadContext() {
     const d = await read("context");
     state.context = d;

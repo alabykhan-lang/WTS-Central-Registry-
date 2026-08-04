@@ -312,4 +312,3 @@ grant execute on function public.school_identity_management_session_write_api(uu
 -- legacy management client. Keep the old function for rollback, but do not
 -- allow a browser to call it during the secure-session rollout.
 revoke all on function public.school_identity_management_write_api(text, text, text, jsonb) from public, anon, authenticated;
-

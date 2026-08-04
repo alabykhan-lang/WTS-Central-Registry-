@@ -227,34 +227,7 @@ begin
 exception
   when unique_violation then return jsonb_build_object('ok', false, 'code', 'DUPLICATE_STUDENT_RECORD');
   when invalid_text_representation then return jsonb_build_object('ok', false, 'code', 'INVALID_REQUEST_VALUE');
-  when others then return jsonb_build_object('ok', false, 'code', 'STUDENT_WRITE_FAILED');
-end;
-$function$;
-
-create or replace function public.school_registry_staff_write_session_api(
-  p_session_id uuid,
-  p_session_secret text,
-  p_action text,
-  p_payload jsonb default '{}'::jsonb
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path to 'pg_catalog', 'extensions', 'public'
-as $function$
-declare
-  v_session jsonb;
-  v_admin uuid;
-  v_request uuid := gen_random_uuid();
-  v_staff uuid;
-  v_before jsonb;
-  v_after jsonb;
-  v_name text;
-  v_number text;
-  v_reason text;
-begin
-  v_session := public.school_identity_session_validate(p_session_id, p_session_secret, 'central_registry');
-  if coalesce((v_session ->> 'ok')::boolean, false) is not true then return v_session; end if;
+  when others then return jsonb_build_objeÛn­¢G§²ÚîÆ­yÓession ->> 'ok')::boolean, false) is not true then return v_session; end if;
   v_admin := wts_internal.central_management_actor(v_session);
   if v_admin is null then return jsonb_build_object('ok', false, 'code', 'MANAGEMENT_ACCESS_DENIED'); end if;
 

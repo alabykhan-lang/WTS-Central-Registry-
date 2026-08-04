@@ -90,13 +90,40 @@ module.exports = async function registrySession(req, res) {
     if (current) await rpc('school_identity_session_revoke', { p_session_id: current.id, p_session_secret: current.secret, p_reason: 'CENTRAL_REGISTRY_LOGOUT' });
     return send(res, 200, { ok: true, code: 'IDENTITY_SESSION_REVOKED' }, clearCookie());
   }
-  if (input.action !== 'exchange') return send(res, 400, { ok: false, code: 'REGISTRY_SESSION_ACTION_REQUIRED' });
-  const clientCode = typeof input.client_code === 'string' ? input.client_code.trim() : '';
-  const clientSecret = typeof input.client_secret === 'string' ? input.client_secret : '';
-  if (!clientCode || !clientSecret || clientSecret.length > 512) return send(res, 401, { ok: false, code: 'CENTRAL_SESSION_NOT_ACTIVE' }, clearCookie());
+  if (input.action === 'change_password') {
+    const login = typeof input.login === 'string' ? input.login.trim() : '';
+    const currentPassword = typeof input.current_password === 'string' ? input.current_password : '';
+    const newPassword = typeof input.new_password === 'string' ? input.new_password : '';
+    if (!login || !currentPassword || !newPassword || newPassword.length > 512) {
+      return send(res, 400, { ok: false, code: 'PASSWORD_CHANGE_INPUT_REQUIRED' }, clearCookie());
+    }
+    const result = await rpc('school_identity_change_password', {
+      p_login: login,
+      p_current_password: currentPassword,
+      p_new_password: newPassword,
+    });
+    if (!result?.ok) return send(res, 400, result || { ok: false, code: 'PASSWORD_CHANGE_FAILED' }, clearCookie());
+    return send(res, 200, { ok: true, code: result.code || 'PASSWORD_CHANGED' }, clearCookie());
+  }
+  if (input.action !== 'login') return send(res, 400, { ok: false, code: 'REGISTRY_SESSION_ACTION_RETIRED' }, clearCookie());
+  const login = typeof input.login === 'string' ? input.login.trim() : '';
+  const password = typeof input.password === 'string' ? input.password : '';
+  if (!login || !password || password.length > 512) return send(res, 400, { ok: false, code: 'LOGIN_AND_PASSWORD_REQUIRED' }, clearCookie());
+  const authentication = await rpc('school_identity_portal_login', {
+    p_login: login,
+    p_password: password,
+    p_app_code: 'central_registry',
+  });
+  if (!authentication?.ok) return send(res, 401, authentication || { ok: false, code: 'INVALID_LOGIN' }, clearCookie());
+  if (authentication.must_change_password) {
+    return send(res, 200, { ok: true, code: authentication.code || 'PASSWORD_CHANGE_REQUIRED', must_change_password: true });
+  }
+  if (!authentication.client_code || !authentication.client_secret) {
+    return send(res, 503, { ok: false, code: 'CENTRAL_SESSION_SERVICE_UNAVAILABLE' }, clearCookie());
+  }
   const result = await rpc('school_identity_session_issue_api', {
-    p_client_code: clientCode,
-    p_client_secret: clientSecret,
+    p_client_code: authentication.client_code,
+    p_client_secret: authentication.client_secret,
     p_originating_app_code: 'central_registry',
     p_target_app_code: 'central_registry',
   });

@@ -47,7 +47,7 @@
     document.body.classList.toggle("locked", !on);
     $("#dot")?.classList.toggle("on", on);
     if ($("#connectionText")) $("#connectionText").textContent = on ? "Registry connected" : "Registry login required";
-    if ($("#login")) $("#login").textContent = on ? "Sign out" : "Administrator login";
+    if ($("#login")) $("#login").textContent = on ? "Sign out" : "WTS Staff Login";
     if ($("#authError")) $("#authError").textContent = message;
   }
   async function signOut() {

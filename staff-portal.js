@@ -1,6 +1,5 @@
 "use strict";
 (() => {
-  const CFG = window.WTS_CONFIG;
   const $ = (selector) => document.querySelector(selector);
   const portalUrls = {
     attendance: "https://wts-attendance-system.vercel.app",
@@ -21,27 +20,16 @@
     setTimeout(() => node.remove(), 4200);
   }
 
-  async function publicRpc(name, args) {
-    const response = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${name}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: CFG.publishableKey },
-      body: JSON.stringify(args),
-    });
-    const payload = await response.json().catch(() => ({ ok: false, code: "INVALID_SERVER_RESPONSE" }));
-    if (!response.ok || payload?.ok === false) throw Object.assign(new Error(payload?.code || "REQUEST_FAILED"), { code: payload?.code || "REQUEST_FAILED" });
-    return payload;
-  }
-
-  async function exchange(result) {
+  async function sessionRequest(action, payload = {}) {
     const response = await fetch("/api/staff-session", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ action: "exchange", client_code: result.client_code, client_secret: result.client_secret }),
+      body: JSON.stringify({ action, ...payload }),
     });
-    const payload = await response.json().catch(() => ({ ok: false, code: "STAFF_SESSION_EXCHANGE_FAILED" }));
-    if (!response.ok || payload?.ok === false) throw Object.assign(new Error(payload?.code || "STAFF_SESSION_EXCHANGE_FAILED"), { code: payload?.code || "STAFF_SESSION_EXCHANGE_FAILED" });
-    return payload;
+    const responsePayload = await response.json().catch(() => ({ ok: false, code: "INVALID_SERVER_RESPONSE" }));
+    if (!response.ok || responsePayload?.ok === false) throw Object.assign(new Error(responsePayload?.code || "REQUEST_FAILED"), { code: responsePayload?.code || "REQUEST_FAILED" });
+    return responsePayload;
   }
 
   async function secureRequest(action, payload = {}) {
@@ -77,7 +65,7 @@
       ACCOUNT_TEMPORARILY_LOCKED: "Too many failed attempts. Ask management to unlock the account or try again later.",
       PORTAL_ACCESS_NOT_GRANTED: "Staff self-service access is not active.",
       PASSWORD_REQUIREMENTS_NOT_MET: "Use at least 10 characters with uppercase, lowercase and a number.",
-      STAFF_SESSION_EXCHANGE_FAILED: "The secure staff session could not be created. Try again.",
+      STAFF_SESSION_SERVICE_UNAVAILABLE: "The secure staff session could not be created. Try again.",
     })[code] || String(code || "Request failed.").replaceAll("_", " ");
   }
 
@@ -86,7 +74,7 @@
     if (!next) throw Object.assign(new Error("Password change is required."), { code: "PASSWORD_CHANGE_REQUIRED" });
     const confirmPassword = prompt("Enter the new password again.");
     if (next !== confirmPassword) throw Object.assign(new Error("The new passwords do not match."), { code: "PASSWORD_MISMATCH" });
-    await publicRpc("school_identity_change_password", { p_login: login, p_current_password: current, p_new_password: next });
+    await sessionRequest("change_password", { login, current_password: current, new_password: next });
     alert("Password changed successfully. Sign in again with the new password.");
   }
 
@@ -96,13 +84,12 @@
     const password = $("#staffPassword").value;
     $("#staffLoginError").textContent = "Checking account...";
     try {
-      const result = await publicRpc("school_identity_portal_login", { p_login: loginName, p_password: password, p_app_code: "staff_self_service" });
+      const result = await sessionRequest("login", { login: loginName, password });
       if (result.must_change_password) {
         await firstPasswordChange(loginName, password);
         lock("Password changed. Sign in again.");
         return;
       }
-      await exchange(result);
       authenticated = true;
       await loadProfile();
       unlock();
@@ -206,7 +193,7 @@
     const again = prompt("Enter the new password again.");
     if (next !== again) return toast("The new passwords do not match.", "error");
     try {
-      await publicRpc("school_identity_change_password", { p_login: loginName, p_current_password: current, p_new_password: next });
+      await sessionRequest("change_password", { login: loginName, current_password: current, new_password: next });
       alert("Password changed. Sign in again.");
       await logout();
     } catch (error) {

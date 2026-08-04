@@ -34,6 +34,7 @@ assert.equal(staffPortal.payload.code, "STAFF_SESSION_REQUIRED");
 for (const path of ["core.js", "bootstrap.js", "identity-login.js", "records.js", "staff-portal.js"]) {
   const source = await readFile(new URL(`../${path}`, import.meta.url), "utf8");
   assert.equal(/sessionStorage|localStorage/.test(source), false, `${path} stores browser session state`);
+  assert.equal(/p_client_secret|p_client_code/.test(source), false, `${path} contains a browser client credential payload`);
 }
 
 console.log("Central session-native client contract passed");
