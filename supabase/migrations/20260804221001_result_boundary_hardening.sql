@@ -153,13 +153,4 @@ begin
     and p.proname = 'school_staff_workspace_read_api'
     and pg_get_function_identity_arguments(p.oid) = 'p_client_code text, p_client_secret text';
   if v_definition is null then raise exception 'WORKSPACE_READ_DEFINITION_NOT_FOUND'; end if;
-  v_definition := replace(v_definition, 'school_staff_workspace_read_api(p_client_code text, p_client_secret text)', 'school_staff_workspace_read_session_api(p_session_id uuid, p_session_secret text)');
-  v_definition := replace(v_definition, 'v_person_id uuid;', E'v_session jsonb;\n  v_person_id uuid;');
-  v_definition := replace(v_definition, 'v_person_id:=public.school_identity_current_staff_session(p_client_code,p_client_secret);', E'v_session:=public.school_identity_session_validate(p_session_id,p_session_secret,''staff_self_service'');\n  if coalesce((v_session ->> ''ok'')::boolean,false) is not true then return v_session; end if;\n  v_person_id:=(v_session ->> ''person_id'')::uuid;');
-  v_definition := replace(v_definition, '''legacy_grant''', '''active_grant''');
-  execute v_definition;
-end;
-$migration$;
-
-revoke all on function public.school_staff_workspace_read_session_api(uuid, text) from public, anon, authenticated;
-grant execute on function public.school_staff_workspace_read_session_api(uuid, text) to service_role;
+  v_definition := replace(v_definition, 'school_s

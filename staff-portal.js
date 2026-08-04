@@ -202,19 +202,4 @@
   }
 
   async function restoreSession() {
-    const response = await fetch("/api/staff-session", { credentials: "same-origin", headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error("STAFF_SESSION_REQUIRED");
-    authenticated = true;
-    await loadProfile();
-    unlock();
-  }
-
-  $("#staffLoginForm").onsubmit = login;
-  $("#staffLogout").onclick = logout;
-  $("#changePassword").onclick = changePassword;
-  $("#staffProfileForm").onsubmit = saveProfile;
-  $("#profileGallery").onchange = (event) => choosePhoto(event.target.files[0]);
-  $("#profileCamera").onchange = (event) => choosePhoto(event.target.files[0]);
-  $("#removeProfilePhoto").onclick = () => { currentPhoto = ""; $("#staffPhoto").src = blankPhoto; };
-  restoreSession().catch(() => lock());
-})();
+    const response = await fetch("/api/sta
