@@ -1,1 +1,91 @@
-"use strict";(()=>{const CFG=window.WTS_CONFIG,STORE="wts_registry_session";const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];const state={context:null,students:[],staff:[],accessStaff:[],selectedAccess:null,handler:null,connected:false,currentView:"dashboard",views:{}};const esc=v=>String(v??"").replace(/[&<>'\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'\"':"&quot;"}[c]));function toast(m,t=""){const n=document.createElement("div");n.className=`toast ${t}`;n.textContent=m;$("#toasts").append(n);setTimeout(()=>n.remove(),4200)}function auth(){try{const v=JSON.parse(sessionStorage.getItem(STORE)||"null");if(v?.code&&v?.secret)return v}catch{}throw new Error("Administrator login required.")}async function rpc(fn,action,payload={}){const a=auth(),r=await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`,{method:"POST",headers:{"Content-Type":"application/json",apikey:CFG.publishableKey},body:JSON.stringify({p_client_code:a.code,p_client_secret:a.secret,p_action:action,p_payload:payload})});let d;try{d=await r.json()}catch{throw new Error("Invalid server response.")}if(!r.ok||d?.ok===false)throw new Error(d?.code||d?.error||"Request failed.");return d}function connected(on,message=""){state.connected=on;document.body.classList.toggle("locked",!on);$("#dot")?.classList.toggle("on",on);if($("#connectionText"))$("#connectionText").textContent=on?"Registry connected":"Registry login required";if($("#login"))$("#login").textContent=on?"Sign out":"Administrator login";if($("#authError"))$("#authError").textContent=message}function signOut(){sessionStorage.removeItem(STORE);state.connected=false;state.students=[];state.staff=[];state.accessStaff=[];state.selectedAccess=null;connected(false);$("#adminSecret").value="";$("#adminCode").focus()}function registerView(name,loader){state.views[name]=loader}function view(name){if(!state.connected)return;state.currentView=name;$$('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`));$$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.view===name));$("#title").textContent=name==='students'?"Student Records":name==='staff'?"Staff Records":name==='access'?"Portal Access":"Central Registry";state.views[name]?.()}function form(title,html,handler,after){$("#formTitle").textContent=title;$("#formBody").innerHTML=html;state.handler=handler;$("#formDialog").showModal();after?.()}const field=(n,l,v="",type="text",full="")=>`<label class="${full}">${l}<input name="${n}" type="${type}" value="${esc(v)}"></label>`;const select=(n,l,opts,v="")=>`<label>${l}<select name="${n}">${opts.map(o=>`<option value="${o[0]}" ${o[0]===v?'selected':''}>${o[1]}</option>`).join('')}</select></label>`;const vals=f=>Object.fromEntries(new FormData(f).entries());window.WTSRegistry={CFG,STORE,$,$$,state,esc,toast,auth,rpc,connected,signOut,registerView,view,form,field,select,vals};})();
+"use strict";
+(() => {
+  const CFG = window.WTS_CONFIG;
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => [...document.querySelectorAll(selector)];
+  const state = {
+    context: null,
+    students: [],
+    staff: [],
+    accessStaff: [],
+    selectedAccess: null,
+    handler: null,
+    connected: false,
+    currentView: "dashboard",
+    views: {},
+  };
+  const esc = (value) => String(value ?? "").replace(/[&<>'\"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    "\"": "&quot;",
+  }[character]));
+  function toast(message, type = "") {
+    const node = document.createElement("div");
+    node.className = `toast ${type}`;
+    node.textContent = message;
+    $("#toasts")?.append(node);
+    setTimeout(() => node.remove(), 4200);
+  }
+  async function registryRequest(operation, action, payload = {}) {
+    const response = await fetch("/api/registry-records", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ operation, action, payload }),
+    });
+    const result = await response.json().catch(() => ({ ok: false, code: "REGISTRY_RECORDS_INVALID_RESPONSE" }));
+    if (!response.ok || result?.ok === false) {
+      if (response.status === 401) connected(false, "Central Registry session expired. Sign in again.");
+      throw Object.assign(new Error(result?.code || "REGISTRY_RECORDS_FAILED"), { code: result?.code, status: response.status });
+    }
+    return result;
+  }
+  function connected(on, message = "") {
+    state.connected = on;
+    document.body.classList.toggle("locked", !on);
+    $("#dot")?.classList.toggle("on", on);
+    if ($("#connectionText")) $("#connectionText").textContent = on ? "Registry connected" : "Registry login required";
+    if ($("#login")) $("#login").textContent = on ? "Sign out" : "Administrator login";
+    if ($("#authError")) $("#authError").textContent = message;
+  }
+  async function signOut() {
+    try {
+      await fetch("/api/registry-session", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "logout" }),
+      });
+    } catch {}
+    state.connected = false;
+    state.students = [];
+    state.staff = [];
+    state.accessStaff = [];
+    state.selectedAccess = null;
+    connected(false);
+    $("#adminSecret") && ($("#adminSecret").value = "");
+    $("#adminCode")?.focus();
+  }
+  function registerView(name, loader) { state.views[name] = loader; }
+  function view(name) {
+    if (!state.connected) return;
+    state.currentView = name;
+    $$(".view").forEach((node) => node.classList.toggle("active", node.id === `view-${name}`));
+    $$(".nav").forEach((button) => button.classList.toggle("active", button.dataset.view === name));
+    $("#title").textContent = name === "students" ? "Student Records" : name === "staff" ? "Staff Records" : name === "access" ? "Portal Access" : "Central Registry";
+    state.views[name]?.();
+  }
+  function form(title, html, handler, after) {
+    $("#formTitle").textContent = title;
+    $("#formBody").innerHTML = html;
+    state.handler = handler;
+    $("#formDialog").showModal();
+    after?.();
+  }
+  const field = (name, label, value = "", type = "text", full = "") => `<label class="${full}">${label}<input name="${name}" type="${type}" value="${esc(value)}"></label>`;
+  const select = (name, label, options, value = "") => `<label>${label}<select name="${name}">${options.map((option) => `<option value="${option[0]}" ${option[0] === value ? "selected" : ""}>${option[1]}</option>`).join("")}</select></label>`;
+  const vals = (formElement) => Object.fromEntries(new FormData(formElement).entries());
+  window.WTSRegistry = { CFG, $, $$, state, esc, toast, registryRequest, connected, signOut, registerView, view, form, field, select, vals };
+})();

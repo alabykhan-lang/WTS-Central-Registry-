@@ -1,12 +1,12 @@
 "use strict";
 (() => {
   const W = window.WTSRegistry,
-    { $, $$, state, esc, toast, rpc, registerView, form, field, select, vals } =
+    { $, $$, state, esc, toast, registryRequest, registerView, form, field, select, vals } =
       W;
-  const read = (a, p = {}) => rpc("school_registry_admin_read_api", a, p),
-    studentWrite = (a, p) => rpc("school_registry_student_write_api", a, p),
-    staffWrite = (a, p) => rpc("school_registry_staff_write_api", a, p),
-    guardianWrite = (a, p) => rpc("school_registry_guardian_write_api", a, p);
+  const read = (a, p = {}) => registryRequest("adminRead", a, p),
+    studentWrite = (a, p = {}) => registryRequest("studentWrite", a, p),
+    staffWrite = (a, p = {}) => registryRequest("staffWrite", a, p),
+    guardianWrite = (a, p = {}) => registryRequest("guardianWrite", a, p);
   async function loadContext() {
     const d = await read("context");
     state.context = d;

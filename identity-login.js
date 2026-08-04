@@ -1,8 +1,6 @@
 "use strict";
 (() => {
   const APP = "central_registry";
-  const STORE = "wts_registry_session";
-  const META = "wts_registry_identity_meta";
   const CFG = window.WTS_CONFIG;
   const $ = (selector) => document.querySelector(selector);
 
@@ -37,6 +35,17 @@
     return payload;
   }
 
+  async function logoutCentral() {
+    try {
+      await fetch("/api/registry-session", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "logout" }),
+      });
+    } catch {}
+  }
+
   function friendly(code) {
     return ({
       INVALID_LOGIN: "Invalid staff number, email or password.",
@@ -44,6 +53,7 @@
       ACCOUNT_TEMPORARILY_LOCKED: "Too many failed attempts. Try again later or ask management to unlock the account.",
       PORTAL_ACCESS_NOT_GRANTED: "Central Registry management access has not been granted to this staff account.",
       PASSWORD_REQUIREMENTS_NOT_MET: "New password must be at least 10 characters and contain uppercase, lowercase and a number.",
+      CENTRAL_SESSION_EXCHANGE_FAILED: "The secure Registry session could not be created. Try again.",
     })[code] || String(code || "Login failed.").replaceAll("_", " ");
   }
 
@@ -56,17 +66,6 @@
     alert("Password changed successfully. Sign in again with the new password.");
   }
 
-  async function logoutCentral() {
-    try {
-      await fetch("/api/registry-session", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) });
-    } catch {}
-    try {
-      const session = JSON.parse(sessionStorage.getItem(STORE) || "null");
-      if (session?.code && session?.secret) await call("school_identity_portal_logout", { p_client_code: session.code, p_client_secret: session.secret });
-    } catch {}
-    sessionStorage.removeItem(META);
-  }
-
   function install() {
     const form = $("#gateForm");
     const login = $("#adminCode");
@@ -74,13 +73,12 @@
     const error = $("#authError");
     if (!form || typeof form.onsubmit !== "function") return setTimeout(install, 40);
     login.closest("label").childNodes[0].textContent = "Staff number, email or administrator code";
-    password.closest("label").childNodes[0].textContent = "Password or administrator secret";
-    const legacy = form.onsubmit;
+    password.closest("label").childNodes[0].textContent = "Password";
     form.onsubmit = async (event) => {
       event.preventDefault();
       const enteredLogin = login.value.trim();
       const enteredPassword = password.value;
-      error.textContent = "Checking central access…";
+      error.textContent = "Checking central access...";
       try {
         const result = await call("school_identity_portal_login", { p_login: enteredLogin, p_password: enteredPassword, p_app_code: APP });
         if (result.must_change_password) {
@@ -89,33 +87,18 @@
           password.value = "";
           return;
         }
-        try {
-          await exchangeSecureSession(result);
-        } catch (secureError) {
-          console.warn("Central secure session exchange unavailable; compatibility session retained.", secureError?.code || secureError);
-        }
-        sessionStorage.setItem(META, JSON.stringify({ mode: "central", loginName: enteredLogin, appCode: APP, expiresAt: result.expires_at, person: result.person, accessRole: result.access_role }));
-        login.value = result.client_code;
-        password.value = result.client_secret;
-        legacy.call(form, event);
-        setTimeout(() => { login.value = enteredLogin; password.value = ""; }, 0);
-      } catch (centralError) {
+        await exchangeSecureSession(result);
         login.value = enteredLogin;
-        password.value = enteredPassword;
-        legacy.call(form, event);
-        setTimeout(() => {
-          if (document.body.classList.contains("locked")) {
-            error.textContent = friendly(centralError.code || centralError.message);
-            password.value = "";
-          }
-        }, 650);
+        password.value = "";
+        error.textContent = "";
+        await window.WTSRecords.loadContext();
+        window.WTSRegistry.connected(true);
+      } catch (centralError) {
+        await logoutCentral();
+        password.value = "";
+        window.WTSRegistry.connected(false, friendly(centralError.code || centralError.message));
       }
     };
-    $("#login")?.addEventListener("click", () => { void logoutCentral(); }, true);
-    try {
-      const meta = JSON.parse(sessionStorage.getItem(META) || "null");
-      if (meta?.loginName && !login.value) login.value = meta.loginName;
-    } catch {}
   }
   install();
 })();

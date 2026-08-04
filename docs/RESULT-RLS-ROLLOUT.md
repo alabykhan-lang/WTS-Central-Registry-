@@ -46,3 +46,22 @@ The post-rollout counts matched the pre-rollout baseline: students 798,
 scores 14303, traits 17520, remarks 757, fees 757, published subjects 300,
 Result profiles 25, invite codes 1, active Result grants 25 and active Result
 scopes 0. No academic or identity record was changed by the rollout.
+
+## Central Registry Record Boundary
+
+The management shell now sends record reads and writes to same-origin
+`/api/registry-records`. That route reads the `wts_registry_session` HttpOnly
+cookie and calls the session-native Central Registry adapters:
+
+- `school_registry_admin_read_session_api`
+- `school_registry_student_write_session_api`
+- `school_registry_staff_write_session_api`
+- `school_registry_guardian_write_session_api`
+
+The `/staff` self-service page uses its separate `wts_staff_session` HttpOnly
+cookie and `school_staff_self_service_session_api`. Neither page stores a
+reusable attendance-admin client secret in browser storage. The old record and
+self-service RPC privileges remain temporarily present until the replacement
+Central Registry deployment is verified; migration
+`20260804140200_revoke_legacy_registry_record_rpc_execute.sql` is the final
+privilege cleanup step and must be applied after that deployment.
