@@ -60,8 +60,7 @@ cookie and calls the session-native Central Registry adapters:
 
 The `/staff` self-service page uses its separate `wts_staff_session` HttpOnly
 cookie and `school_staff_self_service_session_api`. Neither page stores a
-reusable attendance-admin client secret in browser storage. The old record and
-self-service RPC privileges remain temporarily present until the replacement
-Central Registry deployment is verified; migration
-`20260804140200_revoke_legacy_registry_record_rpc_execute.sql` is the final
-privilege cleanup step and must be applied after that deployment.
+reusable attendance-admin client secret in browser storage. After deployment,
+migration `20260804140200_revoke_legacy_registry_record_rpc_execute.sql` was
+applied; the old record and self-service RPC privileges are now revoked for
+`anon` and `authenticated`, and direct calls return HTTP 401.
