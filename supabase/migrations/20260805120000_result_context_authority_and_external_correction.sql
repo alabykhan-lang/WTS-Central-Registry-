@@ -24,6 +24,15 @@ end $$;
 alter table public.school_result_score_audit add column if not exists correction_reason text;
 alter table public.school_result_score_audit add column if not exists audit_metadata jsonb;
 
+do $
+begin
+  if exists (select 1 from (select student_id,class_key,subject_index,academic_session,term,count(*) n from public.scores group by student_id,class_key,subject_index,academic_session,term having count(*)>1) d) then raise exception 'RESULT_DUPLICATE_SCORE_CONTEXT'; end if;
+  if exists (select 1 from (select student_id,class_key,trait_type,trait_name,academic_session,term,count(*) n from public.traits group by student_id,class_key,trait_type,trait_name,academic_session,term having count(*)>1) d) then raise exception 'RESULT_DUPLICATE_TRAIT_CONTEXT'; end if;
+  if exists (select 1 from (select student_id,class_key,academic_session,term,count(*) n from public.remarks group by student_id,class_key,academic_session,term having count(*)>1) d) then raise exception 'RESULT_DUPLICATE_REMARK_CONTEXT'; end if;
+  if exists (select 1 from (select student_id,class_key,academic_session,term,count(*) n from public.fees group by student_id,class_key,academic_session,term having count(*)>1) d) then raise exception 'RESULT_DUPLICATE_FEE_CONTEXT'; end if;
+  if exists (select 1 from (select class_key,academic_session,term,subject_index,count(*) n from public.published_subjects group by class_key,academic_session,term,subject_index having count(*)>1) d) then raise exception 'RESULT_DUPLICATE_PUBLISHED_CONTEXT'; end if;
+end $;
+
 alter table public.scores drop constraint if exists scores_student_subject_term_key;
 alter table public.traits drop constraint if exists traits_student_type_name_term_key;
 alter table public.traits drop constraint if exists traits_upsert_key;
