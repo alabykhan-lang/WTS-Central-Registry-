@@ -65,17 +65,55 @@
       ACCOUNT_TEMPORARILY_LOCKED: "Too many failed attempts. Ask management to unlock the account or try again later.",
       PORTAL_ACCESS_NOT_GRANTED: "Staff self-service access is not active.",
       PASSWORD_REQUIREMENTS_NOT_MET: "Use at least 10 characters with uppercase, lowercase and a number.",
+      PASSWORD_MISMATCH: "The new passwords do not match.",
+      PHOTOGRAPH_INVALID: "Choose a smaller photograph.",
       STAFF_SESSION_SERVICE_UNAVAILABLE: "The secure staff session could not be created. Try again.",
     })[code] || String(code || "Request failed.").replaceAll("_", " ");
   }
 
+  function openPasswordDialog({ currentValue = "", showCurrent = true, title = "Change password", intro = "Use at least 10 characters with uppercase, lowercase and a number.", required = false } = {}) {
+    const dialog = $("#passwordDialog");
+    const form = $("#passwordForm");
+    const currentInput = $("#currentPassword");
+    const currentLabel = $("#currentPasswordLabel");
+    const nextInput = $("#newPassword");
+    const confirmInput = $("#newPasswordConfirm");
+    const error = $("#passwordDialogError");
+    return new Promise((resolve, reject) => {
+      $("#passwordDialogTitle").textContent = title;
+      $("#passwordDialogIntro").textContent = intro;
+      currentLabel.hidden = !showCurrent;
+      currentInput.disabled = !showCurrent;
+      currentInput.value = currentValue;
+      nextInput.value = "";
+      confirmInput.value = "";
+      error.textContent = "";
+      const close = () => { if (dialog.open) dialog.close(); };
+      const cancel = () => { cleanup(); close(); reject(Object.assign(new Error("Password change was cancelled."), { code: required ? "PASSWORD_CHANGE_REQUIRED" : "PASSWORD_CHANGE_CANCELLED" })); };
+      const submit = (event) => {
+        event.preventDefault();
+        if (nextInput.value !== confirmInput.value) { error.textContent = friendly("PASSWORD_MISMATCH"); return; }
+        const result = { current: currentInput.value, next: nextInput.value };
+        cleanup();
+        close();
+        resolve(result);
+      };
+      const cleanup = () => {
+        form.removeEventListener("submit", submit);
+        $("#passwordDialogCancel")?.removeEventListener("click", cancel);
+        dialog.removeEventListener("cancel", cancel);
+      };
+      form.addEventListener("submit", submit);
+      $("#passwordDialogCancel")?.addEventListener("click", cancel);
+      dialog.addEventListener("cancel", cancel, { once: true });
+      dialog.showModal();
+      nextInput.focus();
+    });
+  }
+
   async function firstPasswordChange(login, current) {
-    const next = prompt("Create a new password. Use at least 10 characters with uppercase, lowercase and a number.");
-    if (!next) throw Object.assign(new Error("Password change is required."), { code: "PASSWORD_CHANGE_REQUIRED" });
-    const confirmPassword = prompt("Enter the new password again.");
-    if (next !== confirmPassword) throw Object.assign(new Error("The new passwords do not match."), { code: "PASSWORD_MISMATCH" });
-    await sessionRequest("change_password", { login, current_password: current, new_password: next });
-    alert("Password changed successfully. Sign in again with the new password.");
+    const values = await openPasswordDialog({ currentValue: current, showCurrent: false, title: "Create your password", intro: "This is required before your first Workspace visit.", required: true });
+    await sessionRequest("change_password", { login, current_password: values.current, new_password: values.next });
   }
 
   async function login(event) {
@@ -118,7 +156,8 @@
     $("#staffPortalCards").innerHTML = portals.map((portal) => {
       const active = portal.grant_status === "active";
       const url = active ? portalUrls[portal.app_code] : null;
-      return `<article class="staff-portal-card ${active ? "active" : ""}"><header><strong>${escapeHtml(portal.app_name)}</strong><span class="badge ${active ? "active" : "revoked"}">${active ? "Granted" : "Not granted"}</span></header><p>${escapeHtml(portal.description || "")}</p>${active && url ? `<a class="primary" href="${url}" ${url.startsWith("http") ? "target=\"_blank\" rel=\"noopener\"" : ""}>Open ${escapeHtml(portal.app_name)}</a>` : active ? "<span class=\"not-granted\">Access is active; the portal link will be added when that system is deployed.</span>" : "<span class=\"not-granted\">Management has not assigned this portal.</span>"}</article>`;
+      const displayName = portal.app_code === "staff_self_service" ? "Workspace" : portal.app_name;
+      return `<article class="staff-portal-card ${active ? "active" : ""}"><header><strong>${escapeHtml(displayName)}</strong><span class="badge ${active ? "active" : "revoked"}">${active ? "Granted" : "Not granted"}</span></header><p>${escapeHtml(portal.description || "")}</p>${active && url ? `<a class="primary" href="${url}" ${url.startsWith("http") ? "target=\"_blank\" rel=\"noopener\"" : ""}>Open ${escapeHtml(displayName)}</a>` : active ? "<span class=\"not-granted\">Access is active; the portal link will be added when that system is deployed.</span>" : "<span class=\"not-granted\">Management has not assigned this portal.</span>"}</article>`;
     }).join("");
   }
 
@@ -132,7 +171,15 @@
     $("#staffStatus").textContent = profile.employment_status;
     $("#profileEmail").value = profile.email || "";
     $("#profilePhone").value = profile.phone || "";
+    $("#profileWhatsapp").value = profile.whatsapp_number || "";
     $("#profileAddress").value = profile.address || "";
+    $("#profileEmergency").value = profile.emergency_contact || "";
+    const completion = Number(profile.profile_completion || 0);
+    $("#profileCompletion").textContent = `${completion}%`;
+    $("#profileProgressBar").style.width = `${completion}%`;
+    $("#profileMissing").textContent = completion >= 100
+      ? "Your personal profile is complete. Official employment information is managed by Registry management."
+      : `Still needed: ${(profile.profile_missing || []).join(", ") || "personal details"}.`;
     renderPortals(result.portals || []);
   }
 
@@ -177,7 +224,7 @@
   async function saveProfile(event) {
     event.preventDefault();
     try {
-      await secureRequest("updateProfile", { email: $("#profileEmail").value.trim(), phone: $("#profilePhone").value.trim(), address: $("#profileAddress").value.trim(), photo: currentPhoto });
+      await secureRequest("updateProfile", { phone: $("#profilePhone").value.trim(), whatsappNumber: $("#profileWhatsapp").value.trim(), address: $("#profileAddress").value.trim(), emergencyContact: $("#profileEmergency").value.trim(), photo: currentPhoto });
       await loadProfile();
       toast("Profile updated.", "success");
     } catch (error) {
@@ -186,17 +233,13 @@
   }
 
   async function changePassword() {
-    const current = prompt("Enter your current password.");
-    if (!current) return;
-    const next = prompt("Enter a new password with at least 10 characters, uppercase, lowercase and a number.");
-    if (!next) return;
-    const again = prompt("Enter the new password again.");
-    if (next !== again) return toast("The new passwords do not match.", "error");
     try {
-      await sessionRequest("change_password", { login: loginName, current_password: current, new_password: next });
-      alert("Password changed. Sign in again.");
+      const values = await openPasswordDialog();
+      await sessionRequest("change_password", { login: loginName, current_password: values.current, new_password: values.next });
+      toast("Password changed. Sign in again.", "success");
       await logout();
     } catch (error) {
+      if (error.code === "PASSWORD_CHANGE_CANCELLED") return;
       toast(friendly(error.code || error.message), "error");
     }
   }
@@ -213,6 +256,14 @@
   $("#staffLogout").onclick = logout;
   $("#changePassword").onclick = changePassword;
   $("#staffProfileForm").onsubmit = saveProfile;
+  document.querySelectorAll("[data-password-toggle]").forEach((button) => {
+    button.onclick = () => {
+      const input = document.getElementById(button.dataset.passwordToggle);
+      const visible = input.type === "text";
+      input.type = visible ? "password" : "text";
+      button.textContent = visible ? "Show password" : "Hide password";
+    };
+  });
   $("#profileGallery").onchange = (event) => choosePhoto(event.target.files[0]);
   $("#profileCamera").onchange = (event) => choosePhoto(event.target.files[0]);
   $("#removeProfilePhoto").onclick = () => { currentPhoto = ""; $("#staffPhoto").src = blankPhoto; };

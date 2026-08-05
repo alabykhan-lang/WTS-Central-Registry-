@@ -21,7 +21,7 @@ The current staff sign-in functions are:
 
 The WTS School Platform calls `school_identity_portal_login` with `p_app_code = staff_self_service`. It verifies person status, active employment, account status, credential state, lock state and an active grant before issuing an opaque transition session. Native Supabase Auth is not yet the shared staff population.
 
-The Central Registry credential is independent of the legacy Result Portal password. Existing Result credentials are not copied, reset or assumed to match.
+The Central Registry credential is the shared WTS staff credential used by the connected portal login adapters. Existing identity rows are reused; no second person, account or credential is created during activation.
 
 ## Confirmed existing account recovery state
 
@@ -41,27 +41,23 @@ Role labels and role-permission templates are descriptive. Assigning a role does
 
 The unified workspace filters its module directory from active grants. Management authority is represented by permissions such as `access.manage`; there is no separate management workspace.
 
-## Protected password reset
+## One-time activation and password reset
 
-Migration `20260801160000_secure_identity_recovery_and_unified_workspace` adds:
+Migration `20260805173000_staff_activation_recovery_profile_completion` adds `school_identity_recovery_tokens` and three guarded functions:
 
-- `wts_internal.issue_temporary_credential`, a non-exposed implementation function;
-- `school_identity_issue_temporary_password`, callable only by the server-side service-role route after the live admin session is checked;
-- `school_identity_bootstrap_reset`, restricted to the one confirmed existing bootstrap target;
-- `school_identity_bootstrap_reset_with_actor`, the service-only bootstrap wrapper used by the private operator recovery route;
-- a revised password-change function that clears the compulsory state and records bootstrap completion without storing a password.
+- `school_identity_recovery_issue_service`, service-role only, accepts a Staff Number/email for activation or a verified email for reset;
+- `school_identity_recovery_consume`, anonymous execution with a one-time bearer token and new password;
+- `school_identity_recovery_mark_delivery`, service-role only, records email delivery state.
 
-The reset operates on the existing account and credential rows. It issues a temporary credential once, sets `must_change_password`, clears failed attempts and expired locks, preserves grants and person IDs, invalidates opaque sessions for the target identity, and records actor, timestamp, reason, request ID and safe before/after status in `school_registry_audit`.
+Only a SHA-256 token digest is stored. The raw token is returned to the server-side mail adapter only, expires after 30 minutes, is single-use, invalidates earlier requests, and is never written to logs, audit metadata or browser storage. Completion reuses the existing identity account and credential row, clears compulsory-change/lock state, revokes old opaque sessions and records a safe audit event.
 
-Neither password hashes nor plain-text temporary passwords are stored in audit metadata, repository files, browser storage or application logs. The old public execution privilege on `school_identity_admin_write_api` is revoked so its password-generating reset path cannot be called by anonymous or ordinary authenticated browser clients.
+The browser temporary-credential issuer is retired. Management approves employment and receives activation status; it does not choose, view or manually set a staff password. Production email delivery requires the server-only `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `WTS_EMAIL_FROM` environment variables.
 
 ## One-time bootstrap procedure
 
 The bootstrap path targets only the confirmed existing account and refuses any other staff number/email pair. It does not create a second administrator or alter grants.
 
-The authorised owner must set the server-only Supabase service key and a newly generated one-time bootstrap secret in the WTS School Platform production environment. From a private device, the owner opens the unlinked `/portal/recovery` route, supplies that secret and an operational reason, receives the temporary credential once through the private response, signs in, completes the forced password change and immediately removes the bootstrap secret from the deployment environment. Account metadata records issuance/completion and prevents a second issuance.
-
-The temporary credential is never included in source control, Vercel logs, public documentation or audit metadata.
+The previous bootstrap recovery route remains outside this repository for controlled emergency use. It is not part of the normal staff journey. Normal existing-staff activation and forgotten-password recovery use the public `/activate.html` page and the verified registered email.
 
 ## Session invalidation and audit
 
@@ -77,5 +73,5 @@ The Result Portal remains operational with central WTS login as its normal publi
 
 - The legacy Result Portal directly accesses core tables while RLS is disabled; this requires a dedicated compatibility migration.
 - The current opaque transition session is not the final shared httpOnly authentication architecture.
-- Bootstrap environment configuration must be completed by the authorised owner and removed after recovery.
+- Production email-provider environment configuration must be completed before activation/reset emails can be delivered.
 - Off-boarding and delegated approval policy still require management confirmation.

@@ -39,7 +39,7 @@
   function approveForm(registration) {
     form(
       'Approve staff registration',
-      `<div class="full"><strong>${esc(registration.full_name)}</strong><p class="form-help">Approval creates one active identity and a server-generated immutable staff number. It does not create a password or grant specialist modules.</p></div>`
+      `<div class="full"><strong>${esc(registration.full_name)}</strong><p class="form-help">Approval creates one existing identity link and a server-generated immutable staff number. Workspace access is automatic; specialist module entry is assigned separately. Management never creates or sees a password.</p></div>`
         + field('designation', 'Position', '', 'text', 'full')
         + field('department', 'Department')
         + field('schoolSection', 'School section')
@@ -48,7 +48,8 @@
       async (element) => {
         const values = vals(element);
         const result = await management('registrationWrite', 'approve', { registrationId: registration.id, ...values });
-        toast(`Approved. Staff number: ${result.staff_number}`, 'success');
+        const emailNote = result.activation_email_status === 'sent' ? ' Activation email sent.' : result.activation_email_status === 'not_configured' ? ' Email delivery still needs configuration.' : '';
+        toast(`Approved. Staff number: ${result.staff_number}.${emailNote}`, result.activation_email_status === 'not_configured' ? 'error' : 'success');
         await load();
       },
     );

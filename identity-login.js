@@ -38,17 +38,50 @@
       PORTAL_ACCESS_NOT_GRANTED: "Central Registry management access has not been granted to this staff account.",
       MANAGEMENT_ACCESS_DENIED: "Central Registry management permission has not been granted to this staff account.",
       PASSWORD_REQUIREMENTS_NOT_MET: "New password must be at least 10 characters and contain uppercase, lowercase and a number.",
+      PASSWORD_MISMATCH: "The new passwords do not match.",
        CENTRAL_SESSION_SERVICE_UNAVAILABLE: "The secure Registry session could not be created. Try again.",
     })[code] || String(code || "Login failed.").replaceAll("_", " ");
   }
 
   async function changeRequired(login, current) {
-    const next = prompt("Create a new password. Use at least 10 characters with uppercase, lowercase and a number.");
-    if (!next) throw Object.assign(new Error("Password change is required before first login."), { code: "PASSWORD_CHANGE_REQUIRED" });
-    const confirmPassword = prompt("Enter the new password again.");
-    if (next !== confirmPassword) throw Object.assign(new Error("The new passwords do not match."), { code: "PASSWORD_MISMATCH" });
-    await sessionRequest("change_password", { login, current_password: current, new_password: next });
-    alert("Password changed successfully. Sign in again with the new password.");
+    const dialog = $("#requiredPasswordDialog");
+    const form = $("#requiredPasswordForm");
+    const nextInput = $("#requiredPassword");
+    const confirmInput = $("#requiredPasswordConfirm");
+    const error = $("#requiredPasswordError");
+    if (!dialog || !form) throw Object.assign(new Error("Password change is required before first login."), { code: "PASSWORD_CHANGE_REQUIRED" });
+    return new Promise((resolve, reject) => {
+      const close = () => { if (dialog.open) dialog.close(); };
+      const cancel = () => { cleanup(); close(); reject(Object.assign(new Error("Password change is required before first login."), { code: "PASSWORD_CHANGE_REQUIRED" })); };
+      const submit = async (event) => {
+        event.preventDefault();
+        const next = nextInput.value;
+        const confirmPassword = confirmInput.value;
+        if (next !== confirmPassword) { error.textContent = friendly("PASSWORD_MISMATCH"); return; }
+        error.textContent = "Saving password…";
+        try {
+          await sessionRequest("change_password", { login, current_password: current, new_password: next });
+          cleanup();
+          close();
+          nextInput.value = "";
+          confirmInput.value = "";
+          resolve();
+        } catch (changeError) { error.textContent = friendly(changeError.code || changeError.message); }
+      };
+      const cleanup = () => {
+        form.removeEventListener("submit", submit);
+        $("#requiredPasswordCancel")?.removeEventListener("click", cancel);
+        dialog.removeEventListener("cancel", cancel);
+      };
+      form.addEventListener("submit", submit);
+      $("#requiredPasswordCancel")?.addEventListener("click", cancel);
+      dialog.addEventListener("cancel", cancel, { once: true });
+      error.textContent = "";
+      nextInput.value = "";
+      confirmInput.value = "";
+      dialog.showModal();
+      nextInput.focus();
+    });
   }
 
   function install() {
@@ -59,6 +92,14 @@
     if (!form || typeof form.onsubmit !== "function") return setTimeout(install, 40);
     login.closest("label").childNodes[0].textContent = "Staff number or official email";
     password.closest("label").childNodes[0].textContent = "Password";
+    document.querySelectorAll("[data-password-toggle]").forEach((button) => {
+      button.onclick = () => {
+        const input = document.getElementById(button.dataset.passwordToggle);
+        const visible = input.type === "text";
+        input.type = visible ? "password" : "text";
+        button.textContent = visible ? "Show password" : "Hide password";
+      };
+    });
     form.onsubmit = async (event) => {
       event.preventDefault();
       const enteredLogin = login.value.trim();

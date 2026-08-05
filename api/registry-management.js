@@ -7,12 +7,12 @@ const SUPABASE_KEY = process.env.WTS_SUPABASE_PUBLISHABLE_KEY
   || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZnR6eWVham1zeGRyYndhYXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjczNTgsImV4cCI6MjA4OTQ0MzM1OH0.QUeDRP1IpHCjvecqAOEZAqmMalEFlCLXylZP5D5iLog';
 const COOKIE_NAME = 'wts_registry_session';
 const ALLOWED_ORIGINS = new Set(['https://wts-central-registry.vercel.app']);
+const { issueAndSendRecoveryEmail, sendOperationalStaffEmail } = require('../lib/recovery-email');
 const ROUTES = {
   scopeRead: 'school_access_management_scope_read_session_api',
   scopeWrite: 'school_access_management_scope_write_session_api',
   accessWrite: 'school_access_management_write_session_api',
   identityRead: 'school_identity_admin_read_session_api',
-  credentialWrite: 'school_identity_management_session_write_api',
   registrationRead: 'school_staff_registration_management_session_api',
   registrationWrite: 'school_staff_registration_management_session_api',
   allocationRead: 'school_staff_allocation_management_session_api',
@@ -100,5 +100,24 @@ module.exports = async function registryManagement(req, res) {
     p_payload: payload,
   });
   if (!result?.ok) return send(res, statusFor(result?.code), result, statusFor(result?.code) === 401);
+  if (operation === 'registrationWrite' && input.action.trim().toLowerCase() === 'approve'
+      && ['STAFF_REGISTRATION_APPROVED', 'STAFF_REGISTRATION_ALREADY_APPROVED'].includes(result.code)
+      && result.staff_number) {
+    const activation = await issueAndSendRecoveryEmail({
+      login: result.staff_number,
+      purpose: 'activation',
+      reason: 'management_approved_staff_activation',
+    });
+    return send(res, 200, { ...result, activation_email_status: activation.status });
+  }
+  const action = input.action.trim().toLowerCase();
+  if (payload.staffId && ((operation === 'accessWrite' && action === 'setmoduleaccess' && payload.enabled === true)
+      || (operation === 'allocationWrite' && action === 'setclass' && payload.enabled !== false)
+      || (operation === 'allocationWrite' && action === 'setsubjects' && Array.isArray(payload.subjectIndexes) && payload.subjectIndexes.length > 0))) {
+    const eventType = operation === 'accessWrite' ? 'module_access' : action === 'setclass' ? 'class_assignment' : 'subject_assignment';
+    const label = eventType === 'module_access' ? String(payload.appCode || 'WTS module').replaceAll('_', ' ') : eventType === 'class_assignment' ? `${payload.classKey || 'class'} · ${payload.responsibility || 'class responsibility'}` : `${payload.classKey || 'class'} · ${payload.subjectIndexes.length} subject(s)`;
+    const notification = await sendOperationalStaffEmail({ staffId: payload.staffId, eventType, context: { label } });
+    return send(res, 200, { ...result, staff_notification_status: notification.status });
+  }
   return send(res, 200, result);
 };

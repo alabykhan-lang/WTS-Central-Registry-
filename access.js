@@ -60,8 +60,9 @@
     const description = isSelfService
       ? "This base profile grant supports the staff member’s unified workspace."
       : "This control grants entry to the module. Internal roles and action permissions remain managed inside the specialist module.";
+    const displayName = isSelfService ? "Workspace" : portal.app_name;
     return '<article class="portal-card accessModuleCard ' + (active ? "isActive" : "") + '" data-module-card="' + esc(portal.app_code) + '">'
-      + '<header><div><strong>' + esc(portal.app_name) + '</strong><small>' + esc(portal.app_code.replaceAll("_", " ")) + '</small></div><span class="badge ' + (active ? "active" : "revoked") + '">' + (active ? "Active" : (grant?.grant_status || "No access")) + '</span></header>'
+      + '<header><div><strong>' + esc(displayName) + '</strong><small>' + esc(portal.app_code === "staff_self_service" ? "workspace" : portal.app_code.replaceAll("_", " ")) + '</small></div><span class="badge ' + (active ? "active" : "revoked") + '">' + (active ? "Active" : (grant?.grant_status || "No access")) + '</span></header>'
       + '<p>' + description + '</p>'
       + '<div class="portal-controls">'
       + '<div class="switch-row"><label for="module-enabled-' + esc(portal.app_code) + '">Allow module entry</label><input id="module-enabled-' + esc(portal.app_code) + '" type="checkbox" data-module-enabled="' + esc(portal.app_code) + '" ' + (active ? "checked" : "") + ' ' + (isSelfService ? "disabled" : "") + '></div>'

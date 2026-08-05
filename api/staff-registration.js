@@ -5,6 +5,7 @@ const SUPABASE_KEY = process.env.WTS_SUPABASE_PUBLISHABLE_KEY
   || process.env.SUPABASE_PUBLISHABLE_KEY
   || process.env.SUPABASE_ANON_KEY
   || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZnR6eWVham1zeGRyYndhYXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjczNTgsImV4cCI6MjA4OTQ0MzM1OH0.QUeDRP1IpHCjvecqAOEZAqmMalEFlCLXylZP5D5iLog';
+const { sendRegistrationReceivedEmail } = require('../lib/recovery-email');
 const ALLOWED_ORIGINS = new Set(['https://wts-central-registry.vercel.app']);
 
 function send(res, status, payload) {
@@ -73,5 +74,13 @@ module.exports = async function staffRegistration(req, res) {
     photo: input.photo,
   };
   const result = await rpc(payload);
+  if (result?.ok && result.code === 'STAFF_REGISTRATION_SUBMITTED') {
+    const notification = await sendRegistrationReceivedEmail({
+      fullName: payload.fullName,
+      email: payload.email,
+      registrationId: result.registration_id,
+    });
+    return send(res, 200, { ...result, registration_notification_status: notification.status });
+  }
   return send(res, result?.ok ? 200 : statusFor(result?.code), result);
 };
