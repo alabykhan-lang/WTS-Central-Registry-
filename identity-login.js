@@ -31,7 +31,8 @@
 
   function friendly(code) {
     return ({
-      INVALID_LOGIN: "Invalid staff number, email or password.",
+      INVALID_LOGIN: "The staff number/email or password is incorrect. Check your current password and try again.",
+      LOGIN_AND_PASSWORD_REQUIRED: "Enter your staff number or official email and password.",
       ACCOUNT_NOT_ACTIVE: "This staff account is not active.",
       ACCOUNT_TEMPORARILY_LOCKED: "Too many failed attempts. Try again later or ask management to unlock the account.",
       PORTAL_ACCESS_NOT_GRANTED: "Central Registry management access has not been granted to this staff account.",
@@ -62,6 +63,11 @@
       event.preventDefault();
       const enteredLogin = login.value.trim();
       const enteredPassword = password.value;
+      if (!enteredLogin || !enteredPassword) {
+        error.textContent = friendly("LOGIN_AND_PASSWORD_REQUIRED");
+        (enteredLogin ? password : login).focus();
+        return;
+      }
       error.textContent = "Checking central access...";
       try {
         const result = await sessionRequest("login", { login: enteredLogin, password: enteredPassword });
