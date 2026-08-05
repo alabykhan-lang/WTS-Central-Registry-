@@ -19,8 +19,13 @@
       <label>Administrator code<input id="adminCode" autocomplete="username" required></label>
       <label>Administrator secret<input id="adminSecret" type="password" autocomplete="current-password" required></label>
       <button class="primary" type="submit">Open Central Registry</button>
-      <div class="auth-error" id="authError"></div>
-      <a class="auth-public-link" href="/register.html">Staff self-registration</a>
+      <div class="auth-error" id="authError" role="alert" aria-live="polite"></div>
+      <section class="staff-registration-cta" aria-labelledby="newStaffTitle">
+        <span class="staff-registration-badge">NEW STAFF</span>
+        <h2 id="newStaffTitle">Are you a new staff member?</h2>
+        <p>Register your details here. Management will review your registration before creating login or portal access.</p>
+        <a class="staff-registration-button" href="/register.html">Start staff registration</a>
+      </section>
     </form>
   </section>
 
