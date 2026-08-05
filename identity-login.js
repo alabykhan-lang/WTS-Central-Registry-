@@ -35,6 +35,7 @@
       ACCOUNT_NOT_ACTIVE: "This staff account is not active.",
       ACCOUNT_TEMPORARILY_LOCKED: "Too many failed attempts. Try again later or ask management to unlock the account.",
       PORTAL_ACCESS_NOT_GRANTED: "Central Registry management access has not been granted to this staff account.",
+      MANAGEMENT_ACCESS_DENIED: "Central Registry management permission has not been granted to this staff account.",
       PASSWORD_REQUIREMENTS_NOT_MET: "New password must be at least 10 characters and contain uppercase, lowercase and a number.",
        CENTRAL_SESSION_SERVICE_UNAVAILABLE: "The secure Registry session could not be created. Try again.",
     })[code] || String(code || "Login failed.").replaceAll("_", " ");
@@ -84,3 +85,4 @@
   }
   install();
 })();
+

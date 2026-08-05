@@ -8,6 +8,16 @@ const SUPABASE_KEY = process.env.WTS_SUPABASE_PUBLISHABLE_KEY
 const COOKIE_NAME = 'wts_registry_session';
 const MAX_AGE = 8 * 60 * 60;
 const ALLOWED_ORIGINS = new Set(['https://wts-central-registry.vercel.app']);
+const CENTRAL_MANAGEMENT_PERMISSIONS = new Set([
+  'central_registry.administer',
+  'staff_management.administer',
+  'system_administration.administer',
+]);
+
+function hasCentralManagementPermission(permissions) {
+  return Array.isArray(permissions)
+    && permissions.some((permission) => CENTRAL_MANAGEMENT_PERMISSIONS.has(permission));
+}
 
 function send(res, status, payload, cookie) {
   res.statusCode = status;
@@ -77,6 +87,12 @@ module.exports = async function registrySession(req, res) {
       p_session_id: current.id, p_session_secret: current.secret, p_target_app_code: 'central_registry',
     });
     if (!result?.ok) return send(res, 401, result, clearCookie());
+    if (!hasCentralManagementPermission(result.permissions)) {
+      await rpc('school_identity_session_revoke', {
+        p_session_id: current.id, p_session_secret: current.secret, p_reason: 'CENTRAL_MANAGEMENT_PERMISSION_REQUIRED',
+      });
+      return send(res, 403, { ok: false, code: 'MANAGEMENT_ACCESS_DENIED' }, clearCookie());
+    }
     return send(res, 200, result);
   }
   if (req.method !== 'POST') {
@@ -128,6 +144,12 @@ module.exports = async function registrySession(req, res) {
     p_target_app_code: 'central_registry',
   });
   if (!result?.ok || !result.session_id || !result.session_secret) return send(res, 401, result || { ok: false, code: 'CENTRAL_SESSION_NOT_ACTIVE' }, clearCookie());
+  if (!hasCentralManagementPermission(result.permissions)) {
+    await rpc('school_identity_session_revoke', {
+      p_session_id: result.session_id, p_session_secret: result.session_secret, p_reason: 'CENTRAL_MANAGEMENT_PERMISSION_REQUIRED',
+    });
+    return send(res, 403, { ok: false, code: 'MANAGEMENT_ACCESS_DENIED' }, clearCookie());
+  }
   return send(res, 200, {
     ok: true,
     code: result.code,
@@ -138,3 +160,4 @@ module.exports = async function registrySession(req, res) {
     permissions: result.permissions || [],
   }, sessionCookie(result.session_id, result.session_secret));
 };
+

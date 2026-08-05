@@ -6,14 +6,14 @@ Management titles and system roles are descriptive. They do not automatically cr
 
 `active identity + active employment + active account + current module grant + exact action + scope`
 
-The unified destination is `/workspace`. “Staff” and “management” are not competing workspaces; management authority is represented by the grants below.
+The unified destination is `/workspace`. â€œStaffâ€ and â€œmanagementâ€ are not competing workspaces; management authority is represented by the grants below.
 
 ## Module matrix
 
 | Module | Effective visibility | Current integration state |
 | --- | --- | --- |
 | My Profile | `staff_self_service` plus profile permission | Operational identity link |
-| Central Registry | `central_registry` or Registry permission | Under continued development in unified flow |
+| Central Registry | `central_registry` plus a canonical management permission for management routes | Protected management flow |
 | Results | active `results` grant | Existing Result Portal operational; second login remains |
 | Attendance | attendance grant/action | In development |
 | Notifications | notification grant/action | In development |
@@ -43,7 +43,7 @@ The WTS Workspace only renders modules from the current active-grant response. S
 | Module | Actions |
 | --- | --- |
 | Staff Profile | `profile.view`, `profile.update` |
-| Central Registry | `registry.read`, `registry.manage`, `admissions.manage` |
+| Central Registry | `registry.read`, `registry.manage`, `admissions.manage`, `central_registry.administer` |
 | Result Entry | `result_entry.view`, `result_entry.create`, `result_entry.edit`, `result_entry.submit` |
 | Result Review | `result_review.review` |
 | Result Approval | `result_approval.approve` |
@@ -60,10 +60,10 @@ The WTS Workspace only renders modules from the current active-grant response. S
 Password reset is not a generic role privilege. The guarded server route requires:
 
 1. an active Central Registry opaque session;
-2. the current person’s effective `access.manage` permission;
+2. the current personâ€™s effective `access.manage` permission;
 3. an existing active target staff identity;
 4. a reason of sufficient detail; and
-5. the database reset function’s audit and session-invalidation controls.
+5. the database reset functionâ€™s audit and session-invalidation controls.
 
 The temporary credential is returned once to the authorised management session, is compulsory-change only, and is never written to logs or audit metadata. The old anonymous identity-admin write path is not an allowed fallback.
 
@@ -81,6 +81,14 @@ The temporary credential is returned once to the authorised management session, 
 
 The legacy Result Portal has not yet adopted this server-side matrix. These permissions are the contract for its hardening release and are not presented as proof that the legacy direct-table browser client is secure.
 
+Central Registry management routes accept `central_registry.administer`,
+`staff_management.administer` or `system_administration.administer`. The check
+is repeated server-side for existing sessions and login issuance; a visible
+menu item or a browser role is never sufficient. The existing approved primary
+management grant was corrected to include `central_registry.administer` without
+creating an identity, duplicate role, scope assignment or academic record.
+
 ## Current data policy
 
 No new users, roles, action grants, class scopes or subject scopes were seeded for this correction. Existing real grants remain the source of workspace visibility.
+
