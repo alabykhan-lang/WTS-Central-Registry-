@@ -21,13 +21,9 @@
   const scopeRead = (action, payload = {}) => secureManagement("scopeRead", action, payload);
   const scopeWrite = (action, payload = {}) => secureManagement("scopeWrite", action, payload);
   let catalog = null;
-  const DEFAULT_MODULE_ENTRY_PERMISSIONS = {
-    results: ["results.view_assigned"],
-    attendance: ["attendance.view"],
-    notifications: ["notifications.view"],
-    central_registry: ["central_registry.view"],
-    staff_self_service: ["staff_profile.view", "staff_profile.edit"],
-  };
+  // Central Registry decides module entry only. Existing specialist-module
+  // permission arrays are preserved, but new grants deliberately carry no
+  // technical action permissions.
 
   const empty = (message) => `<div class="empty">${esc(message)}</div>`;
   const formatDate = (value) => value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "Not set";
@@ -60,10 +56,7 @@
     const grant = (profile.module_grants || []).find((item) => item.app_code === portal.app_code);
     const active = grant?.grant_status === "active";
     const isSelfService = portal.app_code === "staff_self_service";
-    const hasEntryDefault = Boolean(
-      (grant && Array.isArray(grant.permissions) && grant.permissions.length)
-      || DEFAULT_MODULE_ENTRY_PERMISSIONS[portal.app_code]?.length
-    );
+    const canManageEntry = portal.app_code !== "staff_self_service";
     const description = isSelfService
       ? "This base profile grant supports the staff member’s unified workspace."
       : "This control grants entry to the module. Internal roles and action permissions remain managed inside the specialist module.";
@@ -74,8 +67,8 @@
       + '<div class="switch-row"><label for="module-enabled-' + esc(portal.app_code) + '">Allow module entry</label><input id="module-enabled-' + esc(portal.app_code) + '" type="checkbox" data-module-enabled="' + esc(portal.app_code) + '" ' + (active ? "checked" : "") + ' ' + (isSelfService ? "disabled" : "") + '></div>'
       + '<div class="accessDateGrid"><label>Effective from<input type="datetime-local" data-module-from="' + esc(portal.app_code) + '" value="' + dateValue(grant?.valid_from) + '"></label><label>Expires (optional)<input type="datetime-local" data-module-until="' + esc(portal.app_code) + '" value="' + dateValue(grant?.valid_until) + '"></label></div>'
       + '<label>Reason<input data-module-reason="' + esc(portal.app_code) + '" value="" placeholder="Required context for this access decision"></label>'
-      + '<small class="accessMeta">' + (grant ? ('Last state: ' + esc(grant.grant_status) + ' · existing internal permissions are preserved · effective ' + formatDate(grant.valid_from) + (grant.valid_until ? ' · expires ' + formatDate(grant.valid_until) : "")) : (hasEntryDefault ? "No grant record exists. A least-privilege module entry grant will be created." : "No entry permission is configured for this module yet.")) + '</small>'
-      + (isSelfService || !hasEntryDefault ? "" : '<button class="primary" type="button" data-save-module="' + esc(portal.app_code) + '">Save module access</button>')
+      + '<small class="accessMeta">' + (grant ? ('Last state: ' + esc(grant.grant_status) + ' · existing specialist-module permissions are preserved · effective ' + formatDate(grant.valid_from) + (grant.valid_until ? ' · expires ' + formatDate(grant.valid_until) : "")) : "No entry grant exists. Save to allow entry; action permissions remain inside the specialist module.") + '</small>'
+      + (isSelfService || !canManageEntry ? "" : '<button class="primary" type="button" data-save-module="' + esc(portal.app_code) + '">Save module access</button>')
       + '</div></article>';
   }
 
@@ -98,16 +91,12 @@
         const grant = (profile.module_grants || []).find((item) => item.app_code === appCode);
         const portal = (catalog.portals || []).find((item) => item.app_code === appCode);
         const enabled = card.querySelector('[data-module-enabled="' + CSS.escape(appCode) + '"]').checked;
-        const permissions = grant
-          ? (Array.isArray(grant.permissions) ? grant.permissions.slice() : [])
-          : (DEFAULT_MODULE_ENTRY_PERMISSIONS[appCode] || []).slice();
         const accessRole = grant?.access_role || portal?.default_roles?.[0] || "staff";
         await perform("setModuleAccess", {
           staffId: state.selectedAccess,
           appCode,
           enabled,
           accessRole,
-          permissions,
           effectiveFrom: card.querySelector('[data-module-from="' + CSS.escape(appCode) + '"]').value,
           expiresAt: card.querySelector('[data-module-until="' + CSS.escape(appCode) + '"]').value,
           reason: card.querySelector('[data-module-reason="' + CSS.escape(appCode) + '"]').value.trim(),
@@ -125,7 +114,6 @@
     try {
       const result = action === "setScope" ? await scopeWrite("setScope", payload) : await write(action, payload);
       toast(String(result.code || "Access updated").replaceAll("_", " ").toLowerCase(), "success");
-      scopeEditId = "";
       await selectStaff(state.selectedAccess);
       await load();
     } catch (error) {

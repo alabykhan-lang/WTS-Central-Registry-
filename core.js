@@ -74,7 +74,7 @@
     state.currentView = name;
     $$(".view").forEach((node) => node.classList.toggle("active", node.id === `view-${name}`));
     $$(".nav").forEach((button) => button.classList.toggle("active", button.dataset.view === name));
-    $("#title").textContent = name === "students" ? "Student Records" : name === "staff" ? "Staff Records" : name === "access" ? "Portal Access" : "Central Registry";
+    $("#title").textContent = name === "students" ? "Student Records" : name === "staff" ? "Staff Records" : name === "registration" ? "Staff Registrations" : name === "allocations" ? "Staff Allocations" : name === "calendar" ? "Academic Calendar" : name === "access" ? "Portal Access" : "Central Registry";
     state.views[name]?.();
   }
   function form(title, html, handler, after) {

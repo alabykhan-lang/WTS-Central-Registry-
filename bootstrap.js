@@ -33,7 +33,7 @@ function extendStaffForm(){
 
 addArchiveControls();extendStaffForm();
 $$('.nav').forEach(b=>b.onclick=()=>view(b.dataset.view));
-$$('[data-open]').forEach(b=>b.onclick=()=>view(b.dataset.open));
+$$('[data-open],[data-view-open]').forEach(b=>b.onclick=()=>view(b.dataset.open||b.dataset.viewOpen));
 $$('[data-manage-students]').forEach(b=>b.onclick=()=>{view('students');$('#studentStatus').value='active';R.loadStudents()});
 $$('[data-action="addStudent"]').forEach(b=>b.onclick=()=>R.studentForm());
 $$('[data-action="addStaff"]').forEach(b=>b.onclick=()=>R.staffForm());

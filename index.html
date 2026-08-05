@@ -1,1 +1,123 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1f3a"><title>WTS Central Registry</title><link rel="stylesheet" href="/styles.css"><link rel="manifest" href="/manifest.webmanifest"></head><body class="locked"><section class="auth-gate" id="authGate"><form id="gateForm" class="auth-card"><div class="auth-logo">WTS</div><small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small><h1>Central Registry Login</h1><p>Student, guardian, staff and portal-access records are restricted to authorized registry management.</p><label>Administrator code<input id="adminCode" autocomplete="username" required></label><label>Administrator secret<input id="adminSecret" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Open Central Registry</button><div class="auth-error" id="authError"></div></form></section><div class="shell"><aside><div class="brand"><b>WTS</b><span>Central Registry</span></div><nav><button class="nav active" data-view="dashboard">Dashboard</button><button class="nav" data-view="students">Students</button><button class="nav" data-view="staff">Staff</button><button class="nav" data-view="access">Portal Access</button></nav><div class="connection"><i id="dot"></i><span id="connectionText">Management access</span></div></aside><main><header><div><small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small><h1 id="title">Central Registry</h1></div><div class="actions"><button class="ghost" id="refresh">Refresh</button><button class="primary" id="login">Sign out</button></div></header><div class="notice"><b>Register once:</b> every student receives a permanent WTS student number. Staff receive self-service only; management grants other portals separately.</div><section class="view active" id="view-dashboard"><div class="metrics"><article><span>Total identities</span><strong id="people">—</strong></article><article><span>Active students</span><strong id="studentCount">—</strong></article><article><span>Active staff</span><strong id="staffCount">—</strong></article></div><div class="cards"><article class="card"><h2>Student admission</h2><p>Add a student, capture a photo, generate the permanent student number and save guardian contacts.</p><button class="primary" data-action="addStudent">Admit student</button></article><article class="card"><h2>Staff registry</h2><p>Add staff or update teachers already linked from the Result Portal.</p><button class="primary" data-action="addStaff">Add staff</button></article><article class="card"><h2>Portal access</h2><p>Choose exactly which school systems each staff member can enter.</p><button class="primary" data-open="access">Manage access</button></article></div></section><section class="view" id="view-students"><div class="section-head"><div><small>STUDENTS</small><h2>Student records</h2></div><button class="primary" data-action="addStudent">Admit student</button></div><div class="filters card"><input id="studentSearch" placeholder="Search name or student number"><select id="studentClass"><option value="">All classes</option></select><select id="studentStatus"><option value="active">Active</option><option value="">All</option><option value="archived">Archived</option><option value="graduated">Graduated</option><option value="transferred">Transferred</option><option value="withdrawn">Withdrawn</option></select><button class="ghost" id="studentFind">Search</button></div><div class="card table-wrap"><table><thead><tr><th>Student</th><th>Class</th><th>Permanent number</th><th>Guardian</th><th>Status</th><th>Actions</th></tr></thead><tbody id="studentRows"></tbody></table><div class="empty" id="studentEmpty">No students found.</div></div></section><section class="view" id="view-staff"><div class="section-head"><div><small>STAFF</small><h2>Staff records</h2></div><button class="primary" data-action="addStaff">Add staff</button></div><div class="filters card"><input id="staffSearch" placeholder="Search name, staff number or email"><select id="staffStatus"><option value="active">Active</option><option value="">All</option><option value="suspended">Suspended</option><option value="archived">Archived</option><option value="exited">Exited</option></select><button class="ghost" id="staffFind">Search</button></div><div class="card table-wrap"><table><thead><tr><th>Staff</th><th>Designation</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead><tbody id="staffRows"></tbody></table><div class="empty" id="staffEmpty">No staff found.</div></div></section><section class="view" id="view-access"><div class="section-head"><div><small>LEAST-PRIVILEGE ACCESS</small><h2>Staff portal access</h2></div></div><div class="filters card access-filter"><input id="accessSearch" placeholder="Search staff name, number or email"><button class="ghost" id="accessFind">Search</button></div><div class="access-layout"><div class="card access-list" id="accessStaffList"><div class="empty">Select a staff member.</div></div><article class="card access-detail"><div id="accessPlaceholder" class="empty">Choose a staff member to assign portal access.</div><div id="accessDetail" hidden><div class="access-person"><img id="accessPhoto" alt=""><div><h2 id="accessName"></h2><p id="accessMeta"></p></div></div><div id="portalCards" class="portal-grid"></div></div></article></div></section></main></div><dialog id="formDialog"><form method="dialog" id="recordForm"><h2 id="formTitle">Record</h2><div id="formBody" class="form-grid"></div><div class="dialog-actions"><button value="cancel" class="ghost">Cancel</button><button class="primary" value="default" id="saveRecord">Save</button></div></form></dialog><div id="toasts"></div><script src="/config.js"></script><script src="/core.js"></script><script src="/records.js"></script><script src="/access.js"></script><script src="/bootstrap.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1f3a">
+  <title>WTS Central Registry</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/registry-workflows.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body class="locked">
+  <section class="auth-gate" id="authGate">
+    <form id="gateForm" class="auth-card">
+      <div class="auth-logo">WTS</div>
+      <small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small>
+      <h1>Central Registry Login</h1>
+      <p>Student, guardian, staff and portal-access records are restricted to authorized registry management.</p>
+      <label>Administrator code<input id="adminCode" autocomplete="username" required></label>
+      <label>Administrator secret<input id="adminSecret" type="password" autocomplete="current-password" required></label>
+      <button class="primary" type="submit">Open Central Registry</button>
+      <div class="auth-error" id="authError"></div>
+      <a class="auth-public-link" href="/register.html">Staff self-registration</a>
+    </form>
+  </section>
+
+  <div class="shell">
+    <aside>
+      <div class="brand"><b>WTS</b><span>Central Registry</span></div>
+      <nav>
+        <button class="nav active" data-view="dashboard">Dashboard</button>
+        <button class="nav" data-view="students">Students</button>
+        <button class="nav" data-view="staff">Staff</button>
+        <button class="nav" data-view="registration">Registrations</button>
+        <button class="nav" data-view="allocations">Allocations</button>
+        <button class="nav" data-view="calendar">Calendar</button>
+        <button class="nav" data-view="access">Portal Access</button>
+      </nav>
+      <div class="connection"><i id="dot"></i><span id="connectionText">Management access</span></div>
+    </aside>
+
+    <main>
+      <header>
+        <div><small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small><h1 id="title">Central Registry</h1></div>
+        <div class="actions"><button class="ghost" id="refresh">Refresh</button><button class="primary" id="login">Sign out</button></div>
+      </header>
+
+      <div class="notice"><b>Register once:</b> every student receives a permanent WTS student number. Staff receive self-service only; management grants other portals separately.</div>
+
+      <section class="view active" id="view-dashboard">
+        <div class="metrics">
+          <article><span>Total identities</span><strong id="people">—</strong></article>
+          <article><span>Active students</span><strong id="studentCount">—</strong></article>
+          <article><span>Active staff</span><strong id="staffCount">—</strong></article>
+        </div>
+        <div class="cards">
+          <article class="card"><h2>Student admission</h2><p>Add a student, capture a photo, generate the permanent student number and save guardian contacts.</p><button class="primary" data-action="addStudent">Admit student</button></article>
+          <article class="card"><h2>Staff registry</h2><p>Manage approved identities and staff records. Public registrations are approved separately.</p><button class="primary" data-open="staff">Open staff records</button></article>
+          <article class="card"><h2>Academic context</h2><p>Set the official session and term. The current context is the default for connected modules.</p><button class="primary" data-open="calendar">Open academic calendar</button></article>
+        </div>
+      </section>
+
+      <section class="view" id="view-students">
+        <div class="section-head"><div><small>STUDENTS</small><h2>Student records</h2></div><button class="primary" data-action="addStudent">Admit student</button></div>
+        <div class="filters card"><input id="studentSearch" placeholder="Search name or student number"><select id="studentClass"><option value="">All classes</option></select><select id="studentStatus"><option value="active">Active</option><option value="">All</option><option value="archived">Archived</option><option value="graduated">Graduated</option><option value="transferred">Transferred</option><option value="withdrawn">Withdrawn</option></select><button class="ghost" id="studentFind">Search</button></div>
+        <div class="card table-wrap"><table><thead><tr><th>Student</th><th>Class</th><th>Permanent number</th><th>Guardian</th><th>Status</th><th>Actions</th></tr></thead><tbody id="studentRows"></tbody></table><div class="empty" id="studentEmpty">No students found.</div></div>
+      </section>
+
+      <section class="view" id="view-staff">
+        <div class="section-head"><div><small>STAFF</small><h2>Staff records</h2></div><button class="primary" data-action="addStaff">Add staff</button></div>
+        <div class="filters card"><input id="staffSearch" placeholder="Search name, staff number or email"><select id="staffStatus"><option value="active">Active</option><option value="">All</option><option value="suspended">Suspended</option><option value="archived">Archived</option><option value="exited">Exited</option></select><button class="ghost" id="staffFind">Search</button></div>
+        <div class="card table-wrap"><table><thead><tr><th>Staff</th><th>Designation</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead><tbody id="staffRows"></tbody></table><div class="empty" id="staffEmpty">No staff found.</div></div>
+      </section>
+
+      <section class="view" id="view-registration">
+        <div class="section-head"><div><small>PENDING STAFF REGISTRATION</small><h2>Review staff registrations</h2></div><button class="ghost" id="registrationFind">Refresh</button></div>
+        <div class="filters card registration-filter"><select id="registrationStatus"><option value="pending">Pending</option><option value="under_review">Under review</option><option value="">All registrations</option><option value="rejected">Rejected</option><option value="approved">Approved</option></select></div>
+        <div class="card registration-list" id="registrationRows"></div>
+        <div class="empty card" id="registrationEmpty" hidden>No registrations found.</div>
+      </section>
+
+      <section class="view" id="view-allocations">
+        <div class="section-head"><div><small>STAFF RESPONSIBILITIES</small><h2>Class and subject allocations</h2></div><div class="current-context" id="allocationContext">Loading official context…</div></div>
+        <div class="card context-toolbar"><div><strong>Current official context</strong><p id="allocationContextNote">New allocations use the official current term by default.</p></div><button class="ghost" id="allocationRefresh">Refresh</button></div>
+        <div class="workflow-grid">
+          <article class="card"><p class="panelEyebrow">CLASS ALLOCATION</p><h3>Assign a teacher to a class</h3><form id="allocationClassForm" class="form-grid compact-form"><label class="full">Teacher<select id="allocationStaff" required></select></label><label>Class<select id="allocationClass" required></select></label><label>Responsibility<select id="allocationResponsibility"><option value="class_teacher">Class Teacher</option><option value="assistant_class_teacher">Assistant Class Teacher</option></select></label><label class="full">Reason<input id="allocationClassReason" required minlength="8" placeholder="Why is this allocation being made?"></label><button class="primary full" type="submit">Save class allocation</button></form></article>
+          <article class="card"><p class="panelEyebrow">SUBJECT ALLOCATION</p><h3>Choose a teacher, then tick subjects</h3><form id="subjectAllocationForm" class="form-grid compact-form"><label class="full">Teacher<select id="subjectStaff" required></select></label><label class="full">Class<select id="subjectClass" required></select></label><div class="full subject-checks" id="subjectChoices"><div class="empty">Choose a class to see its subjects.</div></div><label class="full">Reason<input id="subjectAllocationReason" required minlength="8" placeholder="Why is this allocation being made?"></label><button class="primary full" type="submit">Save selected subjects</button></form></article>
+        </div>
+        <div class="card allocation-history"><div class="section-head"><div><p class="panelEyebrow">ACTIVE CLASS ALLOCATIONS</p><h3>Class responsibility history is never overwritten.</h3></div></div><div id="allocationRows"></div></div>
+        <div class="card allocation-history"><div class="section-head"><div><p class="panelEyebrow">ACTIVE SUBJECT ALLOCATIONS</p><h3>Teacher-first subject assignments</h3></div></div><div id="subjectAllocationRows"></div></div>
+        <div class="card copy-context-card"><div><p class="panelEyebrow">COPY CONTEXT</p><h3>Copy previous allocations into the official current term</h3><p>Copy creates new historical rows and skips conflicts. Start Fresh simply leaves the current term unassigned.</p><div class="form-grid compact-form"><label>Source session<select id="copySourceSession"></select></label><label>Source term<select id="copySourceTerm"></select></label><label class="full">Reason<input id="copyReason" minlength="8" placeholder="Why are these allocations being copied?"></label><div class="row-actions full"><button class="primary" type="button" id="copyAllocations">Copy previous context</button><button class="ghost" type="button" id="startFreshAllocations">Start fresh</button></div></div></div></div>
+      </section>
+
+      <section class="view" id="view-calendar">
+        <div class="section-head"><div><small>OFFICIAL ACADEMIC CALENDAR</small><h2>Session and term control</h2></div><button class="ghost" id="calendarRefresh">Refresh</button></div>
+        <div class="card official-context"><p class="panelEyebrow">CURRENT OFFICIAL CONTEXT</p><h2><span id="calendarCurrentSession">—</span><span class="context-divider">·</span><span id="calendarCurrentTerm">—</span></h2><p>Connected modules use this context for new work. Historical views do not change it.</p></div>
+        <div class="workflow-grid">
+          <article class="card"><p class="panelEyebrow">NEW SESSION</p><h3>Create an academic session</h3><form id="sessionForm" class="form-grid compact-form"><label class="full">Session name<input id="newSessionName" placeholder="e.g. 2027/2028" required></label><label>Starts<input id="newSessionStarts" type="date"></label><label>Ends<input id="newSessionEnds" type="date"></label><button class="primary full" type="submit">Create session</button></form></article>
+          <article class="card"><p class="panelEyebrow">NEW TERM</p><h3>Create a term in an existing session</h3><form id="termForm" class="form-grid compact-form"><label class="full">Session<select id="newTermSession" required></select></label><label class="full">Term<select id="newTermName"><option>1st Term</option><option>2nd Term</option><option>3rd Term</option></select></label><label>Starts<input id="newTermStarts" type="date"></label><label>Ends<input id="newTermEnds" type="date"></label><button class="primary full" type="submit">Create term</button></form></article>
+        </div>
+        <div class="card"><div class="section-head"><div><p class="panelEyebrow">TERM STATUS</p><h3>Open, closed and archived terms</h3></div></div><div id="calendarTerms"></div></div>
+      </section>
+
+      <section class="view" id="view-access">
+        <div class="section-head"><div><small>MODULE ENTRY ACCESS</small><h2>Staff portal access</h2></div></div>
+        <div class="filters card access-filter"><input id="accessSearch" placeholder="Search staff name, number or email"><button class="ghost" id="accessFind">Search</button></div>
+        <div class="access-layout"><div class="card access-list" id="accessStaffList"><div class="empty">Select a staff member.</div></div><article class="card access-detail"><div id="accessPlaceholder" class="empty">Choose a staff member to assign portal access.</div><div id="accessDetail" hidden><div class="access-person"><img id="accessPhoto" alt=""><div><h2 id="accessName"></h2><p id="accessMeta"></p></div></div><div id="portalCards" class="portal-grid"></div></div></article></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="formDialog"><form method="dialog" id="recordForm"><h2 id="formTitle">Record</h2><div id="formBody" class="form-grid"></div><div class="dialog-actions"><button value="cancel" class="ghost">Cancel</button><button class="primary" value="default" id="saveRecord">Save</button></div></form></dialog>
+  <div id="toasts"></div>
+  <script src="/config.js"></script>
+  <script src="/core.js"></script>
+  <script src="/records.js"></script>
+  <script src="/access.js"></script>
+  <script src="/registration-admin.js"></script>
+  <script src="/allocations.js"></script>
+  <script src="/calendar.js"></script>
+  <script src="/bootstrap.js"></script>
+</body>
+</html>
