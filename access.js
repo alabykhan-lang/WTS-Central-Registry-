@@ -21,7 +21,13 @@
   const scopeRead = (action, payload = {}) => secureManagement("scopeRead", action, payload);
   const scopeWrite = (action, payload = {}) => secureManagement("scopeWrite", action, payload);
   let catalog = null;
-  let scopeEditId = "";
+  const DEFAULT_MODULE_ENTRY_PERMISSIONS = {
+    results: ["results.view_assigned"],
+    attendance: ["attendance.view"],
+    notifications: ["notifications.view"],
+    central_registry: ["central_registry.view"],
+    staff_self_service: ["staff_profile.view", "staff_profile.edit"],
+  };
 
   const empty = (message) => `<div class="empty">${esc(message)}</div>`;
   const formatDate = (value) => value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "Not set";
@@ -50,72 +56,33 @@
     }
   }
 
-  function portalRoleOptions(portal, grant) {
-    const roles = [...new Set([grant?.access_role, ...(portal.default_roles || [])].filter(Boolean))];
-    return roles.map((role) => `<option value="${esc(role)}" ${role === grant?.access_role ? "selected" : ""}>${esc(role.replaceAll("_", " "))}</option>`).join("");
-  }
-
-  function permissionPicker(appCode, grant) {
-    const permissions = (catalog.permissions || []).filter((permission) => permission.app_code === appCode);
-    if (!permissions.length) return `<p class="accessHint">No action permissions are configured for this module yet.</p>`;
-    const granted = new Set(grant?.permissions || []);
-    return `<fieldset class="permissionPicker"><legend>Action permissions</legend>${permissions.map((permission) => `<label><input type="checkbox" data-permission="${esc(permission.permission_code)}" ${granted.has(permission.permission_code) ? "checked" : ""}> <span>${esc(permission.module_name)} · ${esc(permission.action_code)}</span></label>`).join("")}</fieldset>`;
-  }
-
   function moduleCard(portal, profile) {
     const grant = (profile.module_grants || []).find((item) => item.app_code === portal.app_code);
     const active = grant?.grant_status === "active";
     const isSelfService = portal.app_code === "staff_self_service";
-    return `<article class="portal-card accessModuleCard ${active ? "isActive" : ""}" data-module-card="${esc(portal.app_code)}">
-      <header><div><strong>${esc(portal.app_name)}</strong><small>${esc(portal.app_code.replaceAll("_", " "))}</small></div><span class="badge ${active ? "active" : "revoked"}">${active ? "Active" : grant?.grant_status || "No access"}</span></header>
-      <p>${isSelfService ? "A current staff account needs this base profile grant to enter the unified workspace." : "Grant this module deliberately, then select the exact actions permitted for this staff member."}</p>
-      <div class="portal-controls">
-        <div class="switch-row"><label for="module-enabled-${esc(portal.app_code)}">Allow module</label><input id="module-enabled-${esc(portal.app_code)}" type="checkbox" data-module-enabled="${esc(portal.app_code)}" ${active ? "checked" : ""} ${isSelfService ? "disabled" : ""}></div>
-        <label>Module role<select data-module-role="${esc(portal.app_code)}" ${isSelfService ? "disabled" : ""}>${portalRoleOptions(portal, grant)}</select></label>
-        ${permissionPicker(portal.app_code, grant)}
-        <div class="accessDateGrid"><label>Effective from<input type="datetime-local" data-module-from="${esc(portal.app_code)}" value="${dateValue(grant?.valid_from)}"></label><label>Expires (optional)<input type="datetime-local" data-module-until="${esc(portal.app_code)}" value="${dateValue(grant?.valid_until)}"></label></div>
-        <label>Reason<input data-module-reason="${esc(portal.app_code)}" value="" placeholder="Required context for this access decision"></label>
-        <small class="accessMeta">${grant ? `Last state: ${esc(grant.grant_status)} · effective ${formatDate(grant.valid_from)}${grant.valid_until ? ` · expires ${formatDate(grant.valid_until)}` : ""}` : "No grant record exists."}</small>
-        ${isSelfService ? "" : `<button class="primary" type="button" data-save-module="${esc(portal.app_code)}">Save module access</button>`}
-      </div>
-    </article>`;
-  }
-
-  function renderRoleAssignments(profile) {
-    const assigned = profile.role_assignments || [];
-    const available = (catalog.roles || []).map((role) => `<option value="${esc(role.role_code)}">${esc(role.role_name)}</option>`).join("");
-    return `<article class="accessPanel"><header><div><p class="panelEyebrow">SYSTEM ROLES</p><h3>Responsibilities do not auto-grant access.</h3></div></header><p>Assign role labels for the staff member’s responsibility, then use the module cards above to grant each permitted action explicitly.</p>
-      <div class="assignmentForm"><label>Role<select id="systemRoleSelect">${available}</select></label><label>Effective from<input id="systemRoleFrom" type="datetime-local"></label><label>Expires (optional)<input id="systemRoleUntil" type="datetime-local"></label><label class="full">Reason<input id="systemRoleReason" placeholder="Reason for assigning this responsibility"></label><button type="button" class="primary" data-assign-role>Assign role</button></div>
-      <div class="assignmentList">${assigned.length ? assigned.map((role) => `<div class="assignmentRow"><div><strong>${esc(role.role_name)}</strong><small>${esc(role.assignment_status)} · from ${formatDate(role.effective_from)}${role.effective_until ? ` · until ${formatDate(role.effective_until)}` : ""}</small></div>${role.assignment_status === "active" ? `<button type="button" class="ghost" data-revoke-role="${esc(role.role_code)}">Revoke</button>` : ""}</div>`).join("") : empty("No system role has been explicitly assigned.")}</div>
-    </article>`;
-  }
-
-  function subjectOptions(classKey) {
-    const subjects = (catalog.subjects || []).filter((subject) => subject.class_key === classKey);
-    return `<option value="">Select subject</option>${subjects.map((subject) => `<option value="${subject.subject_index}">${esc(subject.subject_name)}</option>`).join("")}`;
-  }
-
-  function renderScopes(profile) {
-    const scopes = profile.scopes || [];
-    const context = profile.result_context || catalog.result_context || {};
-    const session = context.academic_session || "";
-    const term = context.term || "";
-    const classes = `<option value="">Select class</option>${(catalog.classes || []).map((item) => `<option value="${esc(item.class_key)}">${esc(item.display_name)}</option>`).join("")}`;
-    return `<article class="accessPanel"><header><div><p class="panelEyebrow">RESULTS SCOPE</p><h3>Classes and subjects</h3></div></header><p>Result access is restricted by the saved class, subject, academic session and term. No assignment gives no Result access.</p>
-      <div class="assignmentForm scopesForm"><input id="scopeEditId" type="hidden" value=""><label>Academic session<input id="scopeSession" value="${esc(session)}" placeholder="e.g. 2025/2026" required></label><label>Term<select id="scopeTerm"><option value="1st Term" ${term === "1st Term" ? "selected" : ""}>1st Term</option><option value="2nd Term" ${term === "2nd Term" ? "selected" : ""}>2nd Term</option><option value="3rd Term" ${term === "3rd Term" ? "selected" : ""}>3rd Term</option></select></label><label>Class<select id="scopeClassSelect">${classes}</select></label><label>Subject<select id="scopeSubjectSelect" disabled><option value="">Select a class first</option></select></label><label>Effective from<input id="scopeFrom" type="datetime-local"></label><label>Expires (optional)<input id="scopeUntil" type="datetime-local"></label><label class="full">Reason<input id="scopeReason" placeholder="Reason for this class or subject assignment" required></label><div class="scopeButtons"><button type="button" class="primary" data-assign-class>Assign whole class</button><button type="button" class="ghost" data-assign-subject>Assign selected subject</button></div></div>
-      <div class="assignmentList">${scopes.length ? scopes.map((scope) => `<div class="assignmentRow"><div><strong>${esc(scope.display_name)}${scope.scope_type === "subject" ? ` · ${esc(scope.subject_name)}` : " · Whole class"}</strong><small>${esc(scope.scope_status)} · ${esc(scope.academic_session || "Any session")} · ${esc(scope.term || "Any term")} · from ${formatDate(scope.effective_from)}${scope.effective_until ? ` · until ${formatDate(scope.effective_until)}` : ""}</small></div><div class="row-actions"><button type="button" class="ghost" data-edit-scope="${scope.id}">Edit</button>${scope.scope_status === "active" ? `<button type="button" class="ghost" data-revoke-scope="${scope.id}">Revoke</button>` : `<button type="button" class="primary" data-restore-scope="${scope.id}">Restore</button>`}</div></div>`).join("") : empty("No class or subject has been assigned to this account.")}</div>
-    </article>`;
+    const hasEntryDefault = Boolean(
+      (grant && Array.isArray(grant.permissions) && grant.permissions.length)
+      || DEFAULT_MODULE_ENTRY_PERMISSIONS[portal.app_code]?.length
+    );
+    const description = isSelfService
+      ? "This base profile grant supports the staff member’s unified workspace."
+      : "This control grants entry to the module. Internal roles and action permissions remain managed inside the specialist module.";
+    return '<article class="portal-card accessModuleCard ' + (active ? "isActive" : "") + '" data-module-card="' + esc(portal.app_code) + '">'
+      + '<header><div><strong>' + esc(portal.app_name) + '</strong><small>' + esc(portal.app_code.replaceAll("_", " ")) + '</small></div><span class="badge ' + (active ? "active" : "revoked") + '">' + (active ? "Active" : (grant?.grant_status || "No access")) + '</span></header>'
+      + '<p>' + description + '</p>'
+      + '<div class="portal-controls">'
+      + '<div class="switch-row"><label for="module-enabled-' + esc(portal.app_code) + '">Allow module entry</label><input id="module-enabled-' + esc(portal.app_code) + '" type="checkbox" data-module-enabled="' + esc(portal.app_code) + '" ' + (active ? "checked" : "") + ' ' + (isSelfService ? "disabled" : "") + '></div>'
+      + '<div class="accessDateGrid"><label>Effective from<input type="datetime-local" data-module-from="' + esc(portal.app_code) + '" value="' + dateValue(grant?.valid_from) + '"></label><label>Expires (optional)<input type="datetime-local" data-module-until="' + esc(portal.app_code) + '" value="' + dateValue(grant?.valid_until) + '"></label></div>'
+      + '<label>Reason<input data-module-reason="' + esc(portal.app_code) + '" value="" placeholder="Required context for this access decision"></label>'
+      + '<small class="accessMeta">' + (grant ? ('Last state: ' + esc(grant.grant_status) + ' · existing internal permissions are preserved · effective ' + formatDate(grant.valid_from) + (grant.valid_until ? ' · expires ' + formatDate(grant.valid_until) : "")) : (hasEntryDefault ? "No grant record exists. A least-privilege module entry grant will be created." : "No entry permission is configured for this module yet.")) + '</small>'
+      + (isSelfService || !hasEntryDefault ? "" : '<button class="primary" type="button" data-save-module="' + esc(portal.app_code) + '">Save module access</button>')
+      + '</div></article>';
   }
 
   function renderAccount(profile) {
     const staff = profile.staff;
     const suspended = staff.account_status === "suspended";
     return `<article class="accessPanel"><header><div><p class="panelEyebrow">PORTAL ACCOUNT</p><h3>${suspended ? "Access suspended" : "Account active"}</h3></div><span class="badge ${suspended ? "suspended" : "active"}">${esc(staff.account_status)}</span></header><p>${suspended ? "The account cannot create a new workspace session. Existing Central Registry sessions are invalidated when suspension is saved." : "The account may authenticate only while its employment and explicit module grants remain active."}</p><div class="row-actions"><button class="${suspended ? "primary" : "ghost"}" type="button" data-account-status="${suspended ? "active" : "suspended"}">${suspended ? "Restore portal access" : "Suspend portal access"}</button></div></article>`;
-  }
-
-  function renderDirectory(profile) {
-    const staff = profile.staff;
-    return `<article class="accessPanel"><header><div><p class="panelEyebrow">PUBLIC STAFF DIRECTORY</p><h3>Explicit publication approval</h3></div></header><p>Active employment alone never publishes a staff member. This only prepares Central Registry data for the public directory’s later approved synchronisation.</p><div class="assignmentForm"><label class="switch-row">Approve public visibility <input id="directoryApproved" type="checkbox" ${staff.public_visibility_approved ? "checked" : ""}></label><label>Approved display name<input id="directoryName" value="${esc(staff.public_display_name || "")}" placeholder="Leave blank to use approved future mapping"></label><label>Approved role<input id="directoryRole" value="${esc(staff.public_display_role || "")}" placeholder="Public designation"></label><label>Display order<input id="directoryOrder" inputmode="numeric" value="${staff.public_display_order ?? ""}"></label><button type="button" class="ghost" data-save-directory>Save directory approval</button></div></article>`;
   }
 
   function renderHistory(profile) {
@@ -128,71 +95,30 @@
       button.onclick = async () => {
         const appCode = button.dataset.saveModule;
         const card = button.closest("[data-module-card]");
-        const enabled = card.querySelector(`[data-module-enabled="${CSS.escape(appCode)}"]`).checked;
-        const accessRole = card.querySelector(`[data-module-role="${CSS.escape(appCode)}"]`).value;
-        const permissions = [...card.querySelectorAll("[data-permission]:checked")].map((input) => input.dataset.permission);
-        await perform("setModuleAccess", { staffId: state.selectedAccess, appCode, enabled, accessRole, permissions, effectiveFrom: card.querySelector(`[data-module-from="${CSS.escape(appCode)}"]`).value, expiresAt: card.querySelector(`[data-module-until="${CSS.escape(appCode)}"]`).value, reason: card.querySelector(`[data-module-reason="${CSS.escape(appCode)}"]`).value.trim() });
+        const grant = (profile.module_grants || []).find((item) => item.app_code === appCode);
+        const portal = (catalog.portals || []).find((item) => item.app_code === appCode);
+        const enabled = card.querySelector('[data-module-enabled="' + CSS.escape(appCode) + '"]').checked;
+        const permissions = grant
+          ? (Array.isArray(grant.permissions) ? grant.permissions.slice() : [])
+          : (DEFAULT_MODULE_ENTRY_PERMISSIONS[appCode] || []).slice();
+        const accessRole = grant?.access_role || portal?.default_roles?.[0] || "staff";
+        await perform("setModuleAccess", {
+          staffId: state.selectedAccess,
+          appCode,
+          enabled,
+          accessRole,
+          permissions,
+          effectiveFrom: card.querySelector('[data-module-from="' + CSS.escape(appCode) + '"]').value,
+          expiresAt: card.querySelector('[data-module-until="' + CSS.escape(appCode) + '"]').value,
+          reason: card.querySelector('[data-module-reason="' + CSS.escape(appCode) + '"]').value.trim(),
+        });
       };
     });
-    $("[data-assign-role]").onclick = () => perform("setSystemRole", { staffId: state.selectedAccess, roleCode: $("#systemRoleSelect").value, enabled: true, effectiveFrom: $("#systemRoleFrom").value, expiresAt: $("#systemRoleUntil").value, reason: $("#systemRoleReason").value.trim() });
-    $$('[data-revoke-role]').forEach((button) => { button.onclick = () => perform("setSystemRole", { staffId: state.selectedAccess, roleCode: button.dataset.revokeRole, enabled: false, reason: "Role responsibility revoked by management" }); });
-    $("#scopeClassSelect").onchange = () => {
-      const classKey = $("#scopeClassSelect").value;
-      const select = $("#scopeSubjectSelect");
-      select.disabled = !classKey;
-      select.innerHTML = classKey ? subjectOptions(classKey) : "<option value=\"\">Select a class first</option>";
-    };
-    $("[data-assign-class]").onclick = () => assignScope("class");
-    $("[data-assign-subject]").onclick = () => assignScope("subject");
-    $$('[data-revoke-scope]').forEach((button) => {
-      button.onclick = () => {
-        const scope = (profile.scopes || []).find((item) => item.id === button.dataset.revokeScope);
-        if (scope) perform("setScope", { staffId: state.selectedAccess, scopeId: scope.id, appCode: scope.app_code, scopeType: scope.scope_type, classKey: scope.class_key, subjectIndex: scope.subject_index, academicSession: scope.academic_session || "", term: scope.term || "", enabled: false, reason: "Scope revoked by management" });
-      };
+    $("[data-account-status]").onclick = () => perform("setAccountStatus", {
+      staffId: state.selectedAccess,
+      accountStatus: $("[data-account-status]").dataset.accountStatus,
+      reason: "Portal account status changed by management",
     });
-    $$('[data-edit-scope]').forEach((button) => {
-      button.onclick = () => editScope((profile.scopes || []).find((item) => item.id === button.dataset.editScope));
-    });
-    $$('[data-restore-scope]').forEach((button) => {
-      button.onclick = () => {
-        const scope = (profile.scopes || []).find((item) => item.id === button.dataset.restoreScope);
-        if (scope) perform("setScope", { staffId: state.selectedAccess, scopeId: scope.id, appCode: scope.app_code, scopeType: scope.scope_type, classKey: scope.class_key, subjectIndex: scope.subject_index, academicSession: scope.academic_session || "", term: scope.term || "", enabled: true, effectiveFrom: new Date().toISOString(), expiresAt: "", reason: "Scope restored by management" });
-      };
-    });
-    $("[data-account-status]").onclick = () => perform("setAccountStatus", { staffId: state.selectedAccess, accountStatus: $("[data-account-status]").dataset.accountStatus, reason: "Portal account status changed by management" });
-    $("[data-save-directory]").onclick = () => perform("setPublicDirectoryVisibility", { staffId: state.selectedAccess, approved: $("#directoryApproved").checked, displayName: $("#directoryName").value.trim(), displayRole: $("#directoryRole").value.trim(), displayOrder: $("#directoryOrder").value.trim() });
-  }
-
-  function assignScope(scopeType) {
-    const classKey = $("#scopeClassSelect").value;
-    const subjectIndex = $("#scopeSubjectSelect").value;
-    if (!classKey || (scopeType === "subject" && subjectIndex === "")) {
-      toast(scopeType === "subject" ? "Select a class and subject first." : "Select a class first.", "error");
-      return;
-    }
-    const academicSession = $("#scopeSession").value.trim();
-    const term = $("#scopeTerm").value;
-    const reason = $("#scopeReason").value.trim();
-    if (!academicSession || !term || !reason) {
-      toast("Academic session, term and reason are required.", "error");
-      return;
-    }
-    perform("setScope", { staffId: state.selectedAccess, scopeId: $("#scopeEditId").value || "", appCode: "results", scopeType, classKey, subjectIndex: scopeType === "subject" ? subjectIndex : "", academicSession, term, enabled: true, effectiveFrom: $("#scopeFrom").value, expiresAt: $("#scopeUntil").value, reason });
-  }
-
-  function editScope(scope) {
-    if (!scope) return;
-    scopeEditId = scope.id;
-    $("#scopeEditId").value = scope.id;
-    $("#scopeSession").value = scope.academic_session || "";
-    $("#scopeTerm").value = scope.term || "";
-    $("#scopeClassSelect").value = scope.class_key || "";
-    $("#scopeClassSelect").dispatchEvent(new Event("change"));
-    $("#scopeSubjectSelect").value = scope.subject_index == null ? "" : String(scope.subject_index);
-    $("#scopeFrom").value = dateValue(scope.effective_from);
-    $("#scopeUntil").value = dateValue(scope.effective_until);
-    $("#scopeReason").value = scope.reason || "";
-    toast("Assignment loaded for editing.");
   }
 
   async function perform(action, payload) {
@@ -212,9 +138,6 @@
       await loadCatalog();
       state.selectedAccess = staffId;
       const profile = await read("staffAccessProfile", { staffId });
-      const scopedProfile = await scopeRead("staffAccessProfile", { staffId });
-      profile.scopes = scopedProfile.scopes || [];
-      profile.result_context = scopedProfile.result_context || catalog.result_context || {};
       const staff = profile.staff;
       $("#accessPlaceholder").hidden = true;
       $("#accessDetail").hidden = false;
@@ -223,7 +146,7 @@
       $("#accessPhoto").src = safeImage("");
       $("#accessPhoto").alt = "";
       const modules = (catalog.portals || []).map((portal) => moduleCard(portal, profile)).join("");
-      $("#portalCards").innerHTML = `<section class="accessModuleGrid"><div class="accessSectionHead"><div><p class="panelEyebrow">MODULE AND ACTION ACCESS</p><h3>Grant only what this staff member needs.</h3></div><p>Roles are descriptive. Access is enforced by the saved module, action and scope grants below.</p></div><div class="portal-grid">${modules}</div></section>${renderRoleAssignments(profile)}${renderScopes(profile)}${renderAccount(profile)}${renderDirectory(profile)}${renderHistory(profile)}`;
+      $("#portalCards").innerHTML = `<section class="accessModuleGrid"><div class="accessSectionHead"><div><p class="panelEyebrow">MODULE ACCESS</p><h3>Choose which WTS modules this staff member may enter.</h3></div><p>Central Registry controls module entry. Existing specialist roles, action permissions and Result scopes remain enforced inside their own modules.</p></div><div class="portal-grid">${modules}</div></section>${renderAccount(profile)}${renderHistory(profile)}`;
       installHandlers(profile);
     } catch (error) {
       toast(error.message, "error");
