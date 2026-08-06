@@ -13,6 +13,7 @@ const ROUTES = {
   scopeWrite: 'school_access_management_scope_write_session_api',
   accessWrite: 'school_access_management_write_session_api',
   identityRead: 'school_identity_admin_read_session_api',
+  identityWrite: 'school_identity_admin_write_session_api',
   registrationRead: 'school_staff_registration_management_session_api',
   registrationWrite: 'school_staff_registration_management_session_api',
   allocationRead: 'school_staff_allocation_management_session_api',
@@ -75,7 +76,7 @@ async function rpc(name, payload) {
 function statusFor(code) {
   if (['RESULT_SESSION_REQUIRED', 'RESULT_SESSION_NOT_ACTIVE', 'RESULT_SESSION_AUDIENCE_MISMATCH', 'CENTRAL_IDENTITY_NOT_ACTIVE', 'RESULT_ACCESS_NOT_GRANTED'].includes(code)) return 401;
   if (['MANAGEMENT_ACCESS_DENIED', 'STAFF_NOT_ACTIVE', 'ACTIVE_CLASS_NOT_FOUND', 'ACTIVE_RESULT_SUBJECT_NOT_FOUND'].includes(code)) return 403;
-  if (['CLASS_MAIN_TEACHER_ALREADY_ASSIGNED', 'ACADEMIC_TERM_READ_ONLY', 'CURRENT_TERM_REPLACEMENT_REQUIRED', 'DUPLICATE_STAFF_IDENTITY'].includes(code)) return 409;
+  if (['CLASS_MAIN_TEACHER_ALREADY_ASSIGNED', 'ACADEMIC_TERM_READ_ONLY', 'CURRENT_TERM_REPLACEMENT_REQUIRED', 'DUPLICATE_STAFF_IDENTITY', 'RECOVERY_CODE_ISSUE_TOO_SOON'].includes(code)) return 409;
   return 400;
 }
 

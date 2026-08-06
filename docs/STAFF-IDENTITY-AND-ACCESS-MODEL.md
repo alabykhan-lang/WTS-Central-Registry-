@@ -41,27 +41,26 @@ Role labels and role-permission templates are descriptive. Assigning a role does
 
 The unified workspace filters its module directory from active grants. Management authority is represented by permissions such as `access.manage`; there is no separate management workspace.
 
-## One-time activation and password reset
+## Existing-staff activation and password reset
 
-Migration `20260805173000_staff_activation_recovery_profile_completion` adds `school_identity_recovery_tokens` and three guarded functions:
+Migration `20260806010000_staff_management_recovery_codes` adds `school_identity_management_codes` and two guarded functions:
 
-- `school_identity_recovery_issue_service`, service-role only, accepts a Staff Number/email for activation or a verified email for reset;
-- `school_identity_recovery_consume`, anonymous execution with a one-time bearer token and new password;
-- `school_identity_recovery_mark_delivery`, service-role only, records email delivery state.
+- `school_identity_admin_write_session_api`, available only through an active Central Registry management session, issues an activation or password-recovery code for an existing staff identity;
+- `school_identity_management_code_consume`, available to the public recovery route, accepts the Staff Number, management-issued code and a new password.
 
-Only a SHA-256 token digest is stored. The raw token is returned to the server-side mail adapter only, expires after 30 minutes, is single-use, invalidates earlier requests, and is never written to logs, audit metadata or browser storage. Completion reuses the existing identity account and credential row, clears compulsory-change/lock state, revokes old opaque sessions and records a safe audit event.
+Management receives the raw code once so it can share it directly through the school office or official school WhatsApp. Only a SHA-256 digest is stored. The code expires after 30 minutes, works once, invalidates an earlier code for the same purpose, locks after five failed attempts, and is never written to logs or audit metadata. Completion reuses the existing identity account and credential row, clears failed attempts/locks, revokes old opaque sessions and records a safe audit event.
 
-The browser temporary-credential issuer is retired. Management approves employment and receives activation status; it does not choose, view or manually set a staff password. Production email delivery requires the server-only `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` and `WTS_EMAIL_FROM` environment variables.
+The browser temporary-credential issuer is retired. Management never chooses, views or stores a staff password. Email is not required for existing-staff activation or forgotten-password recovery; the previous email token path remains available only for a later provider-backed rollout.
 
 ## One-time bootstrap procedure
 
 The bootstrap path targets only the confirmed existing account and refuses any other staff number/email pair. It does not create a second administrator or alter grants.
 
-The previous bootstrap recovery route remains outside this repository for controlled emergency use. It is not part of the normal staff journey. Normal existing-staff activation and forgotten-password recovery use the public `/activate.html` page and the verified registered email.
+The previous bootstrap recovery route remains outside this repository for controlled emergency use. It is not part of the normal staff journey. Normal existing-staff activation and forgotten-password recovery use the public `/activate.html` page and a code issued from the authorised management panel.
 
 ## Session invalidation and audit
 
-Password reset, password activation and account/grant suspension suspend the existing opaque attendance-admin client sessions for the affected person and replace the stored secret hash with a new random value. Logout also suspends the session. Subsequent workspace reads must fail with an inactive-session result.
+Password reset, password activation and account/grant suspension revoke the affected person’s central identity sessions and suspend the existing opaque attendance-admin client sessions, replacing the stored secret hash with a new random value. Logout also suspends the session. Subsequent workspace reads must fail with an inactive-session result.
 
 Audit entries retain the actor, action, target, reason, request ID and safe state transition. They intentionally omit passwords and password hashes.
 
@@ -73,5 +72,5 @@ The Result Portal remains operational with central WTS login as its normal publi
 
 - The legacy Result Portal directly accesses core tables while RLS is disabled; this requires a dedicated compatibility migration.
 - The current opaque transition session is not the final shared httpOnly authentication architecture.
-- Production email-provider environment configuration must be completed before activation/reset emails can be delivered.
+- The optional email-provider path remains unconfigured; it is not required for the management-code route.
 - Off-boarding and delegated approval policy still require management confirmation.

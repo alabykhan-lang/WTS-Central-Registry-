@@ -46,7 +46,7 @@ $('#gateForm').onsubmit=e=>{e.preventDefault();$('#authError').textContent='Use 
 $('#recordForm').onsubmit=async e=>{e.preventDefault();if(!state.handler)return;$('#saveRecord').disabled=true;try{await state.handler(e.currentTarget);$('#formDialog').close()}catch(err){toast(err.message,'error')}finally{$('#saveRecord').disabled=false}};
 W.connected(false);fetch('/api/registry-session',{credentials:'same-origin',headers:{Accept:'application/json'}}).then(async response=>{const result=await response.json().catch(()=>null);if(!response.ok||result?.ok===false)throw new Error(result?.code||'REGISTRY_SESSION_REQUIRED');state.connected=true;W.connected(true);await R.loadContext()}).catch(()=>{$('#adminCode').focus()});
 // Identity administration is loaded only after the Central Registry shell is
-// present. Password creation and recovery are self-service through verified
-// email; this panel is read-only status and activation guidance.
+// present. Existing-staff activation and password recovery codes are issued
+// only from the guarded management panel; passwords remain staff-owned.
 for(const src of ['/identity-login.js','/identity-admin.js']){const script=document.createElement('script');script.src=src;script.async=true;document.head.appendChild(script)}
 })();

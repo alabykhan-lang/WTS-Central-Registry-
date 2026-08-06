@@ -45,6 +45,21 @@ async function consume(token, password) {
   return response.ok ? result : { ok: false, code: result?.code || 'RECOVERY_SERVICE_UNAVAILABLE' };
 }
 
+async function consumeManagementCode({ login, purpose, code, password }) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/school_identity_management_code_consume`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    body: JSON.stringify({
+      p_login: login,
+      p_purpose: purpose,
+      p_code: code,
+      p_new_password: password,
+    }),
+  });
+  const result = await response.json().catch(() => ({ ok: false, code: 'RECOVERY_INVALID_RESPONSE' }));
+  return response.ok ? result : { ok: false, code: result?.code || 'RECOVERY_SERVICE_UNAVAILABLE' };
+}
+
 module.exports = async function accountRecovery(req, res) {
   if (!originAllowed(req)) return send(res, 403, { ok: false, code: 'ORIGIN_NOT_ALLOWED' });
   if (req.method !== 'POST') {
@@ -72,6 +87,20 @@ module.exports = async function accountRecovery(req, res) {
         ? 'If the verified email is on file, a password reset link has been sent.'
         : 'If the staff number or registered email is on file, an activation link has been sent.',
     });
+  }
+
+  if (action === 'complete_code') {
+    const purpose = input.purpose === 'password_reset' || input.purpose === 'reset' ? 'password_reset' : 'activation';
+    const login = typeof input.login === 'string' ? input.login.trim() : '';
+    const code = typeof input.code === 'string' ? input.code.trim() : '';
+    const password = typeof input.password === 'string' ? input.password : '';
+    const confirm = typeof input.confirmPassword === 'string' ? input.confirmPassword : '';
+    if (!login || !code || !password || password !== confirm || password.length > 512) {
+      return send(res, 400, { ok: false, code: 'MANAGEMENT_CODE_INPUT_REQUIRED' });
+    }
+    const result = await consumeManagementCode({ login, purpose, code, password });
+    if (!result?.ok) return send(res, 400, result || { ok: false, code: 'MANAGEMENT_CODE_COMPLETION_FAILED' });
+    return send(res, 200, { ok: true, code: result.code || 'RECOVERY_COMPLETED', purpose: result.purpose });
   }
 
   if (action === 'complete') {
