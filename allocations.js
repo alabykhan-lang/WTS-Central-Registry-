@@ -87,7 +87,6 @@
     const sessions = calendarData?.sessions || [];
     const terms = calendarData?.terms || [];
     $('#copySourceSession').innerHTML = sessions.length ? options(sessions, 'session_name', (item) => item.display_name) : '<option value="">No sessions</option>';
-    $('#newTermSession').innerHTML = sessions.length ? options(sessions, 'session_name', (item) => item.display_name) : '<option value="">No sessions</option>';
     const current = context();
     const firstSource = terms.find((item) => item.academic_session !== current.academicSession || item.term_name !== current.term);
     if (firstSource) {
@@ -95,7 +94,6 @@
       $('#copySourceTerm').value = firstSource.term_name;
     }
     refreshCopyTerms();
-    if ($('#newTermSession').options.length && !$('#newTermSession').value) $('#newTermSession').value = current.academicSession || '';
   }
 
   function refreshCopyTerms() {

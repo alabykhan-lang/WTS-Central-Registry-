@@ -4,19 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f3a">
-  <title>WTS Workspace</title>
+  <title>Way to Success Standard Schools · Staff Workspace</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/staff-portal.css">
   <link rel="stylesheet" href="/staff-profile.css">
   <link rel="stylesheet" href="/password-ui.css">
+  <link rel="stylesheet" href="/brand-polish.css">
 </head>
 <body class="staff-locked">
   <section class="staff-login" id="staffLogin">
     <form class="staff-login-card" id="staffLoginForm">
-      <div class="auth-logo">WTS</div>
-      <small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small>
+      <img class="auth-logo registry-logo" src="/public-school-logo.webp" alt="Way to Success Standard Schools logo">
+      <small>Way to Success Standard Schools · Ejigbo</small>
       <h1>Workspace sign-in</h1>
-      <p>Use your official email or Staff Number to enter your WTS Workspace.</p>
+      <p>Use your official email or Staff Number to enter the Way to Success Standard Schools staff workspace.</p>
       <label>Staff Number or official email<input id="staffLoginName" autocomplete="username" required placeholder="WTS/STF/000001"></label>
       <label class="password-field">Password<div class="password-input-wrap"><input id="staffPassword" type="password" autocomplete="current-password" required><button type="button" class="password-toggle" data-password-toggle="staffPassword">Show password</button></div></label>
       <button class="primary" type="submit">Open Workspace</button>
@@ -27,7 +28,7 @@
   </section>
 
   <main class="staff-app" id="staffApp">
-    <header class="staff-header"><div><small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small><h1>My Workspace</h1></div><div class="actions"><button class="ghost" id="changePassword">Change password</button><button class="primary" id="staffLogout">Sign out</button></div></header>
+    <header class="staff-header"><div><small>Way to Success Standard Schools · Ejigbo</small><h1>My Workspace</h1></div><div class="actions"><button class="ghost" id="changePassword">Change password</button><button class="primary" id="staffLogout">Sign out</button></div></header>
     <section class="staff-profile-grid">
       <article class="card profile-card">
         <div class="profile-photo-wrap"><img id="staffPhoto" class="staff-photo" alt="Staff photograph"><div><h2 id="staffName">Staff Member</h2><p id="staffMeta"></p><span class="badge active" id="staffStatus">Active</span></div></div>
@@ -42,7 +43,7 @@
           <button class="primary full" type="submit">Save my profile</button>
         </form>
       </article>
-      <article class="card access-card"><div class="section-head"><div><small>ACTIVE SERVICES</small><h2>Your WTS access</h2><p class="access-card-intro">Only services currently granted to you are shown.</p></div></div><div class="portal-grid" id="staffPortalCards"></div></article>
+      <article class="card access-card"><div class="section-head"><div><small>ACTIVE SERVICES</small><h2>Your school services</h2><p class="access-card-intro">Only services currently granted to you are shown.</p></div></div><div class="portal-grid" id="staffPortalCards"></div></article>
     </section>
   </main>
 

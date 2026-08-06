@@ -1,0 +1,12 @@
+.registry-logo{display:block;object-fit:contain;object-position:center;background:#fff;border-radius:14px;padding:5px;box-shadow:0 8px 20px rgba(11,31,58,.12)}
+.auth-brandline .registry-logo{width:64px;height:64px;flex:0 0 64px;border-radius:18px}
+.brand .registry-logo{width:44px;height:44px;flex:0 0 44px;border-radius:12px;padding:4px}
+.auth-brandline small{font-size:.66rem;line-height:1.45;letter-spacing:.02em}
+.transition-card{display:flex;flex-direction:column;gap:10px;min-height:100%}
+.transition-card h3{margin:0;color:#0b1f3a}
+.transition-copy{margin:0;color:#667085;font-size:13px;line-height:1.55}
+.transition-target,.transition-current{margin-top:auto;padding:15px;border-radius:14px;background:linear-gradient(135deg,#ecfdf3,#f8fbff);border:1px solid #ccebd8}
+.transition-target span:first-child,.transition-current span:first-child{display:block;color:#0f7c5c;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.transition-target strong,.transition-current strong{display:block;margin-top:6px;color:#0b1f3a;font-size:20px}
+.transition-warning{margin:0;color:#667085;font-size:11px;line-height:1.4}
+.full{width:100%}

@@ -20,6 +20,8 @@ const ROUTES = {
   allocationWrite: 'school_staff_allocation_management_session_api',
   calendarRead: 'school_academic_calendar_management_session_api',
   calendarWrite: 'school_academic_calendar_management_session_api',
+  transitionRead: 'school_academic_transition_management_session_api',
+  transitionWrite: 'school_academic_transition_management_session_api',
 };
 
 function send(res, status, payload, clear = false) {
@@ -76,7 +78,7 @@ async function rpc(name, payload) {
 function statusFor(code) {
   if (['RESULT_SESSION_REQUIRED', 'RESULT_SESSION_NOT_ACTIVE', 'RESULT_SESSION_AUDIENCE_MISMATCH', 'CENTRAL_IDENTITY_NOT_ACTIVE', 'RESULT_ACCESS_NOT_GRANTED'].includes(code)) return 401;
   if (['MANAGEMENT_ACCESS_DENIED', 'STAFF_NOT_ACTIVE', 'ACTIVE_CLASS_NOT_FOUND', 'ACTIVE_RESULT_SUBJECT_NOT_FOUND'].includes(code)) return 403;
-  if (['CLASS_MAIN_TEACHER_ALREADY_ASSIGNED', 'ACADEMIC_TERM_READ_ONLY', 'CURRENT_TERM_REPLACEMENT_REQUIRED', 'DUPLICATE_STAFF_IDENTITY', 'RECOVERY_CODE_ISSUE_TOO_SOON'].includes(code)) return 409;
+  if (['CLASS_MAIN_TEACHER_ALREADY_ASSIGNED', 'ACADEMIC_TERM_READ_ONLY', 'CURRENT_TERM_REPLACEMENT_REQUIRED', 'DUPLICATE_STAFF_IDENTITY', 'RECOVERY_CODE_ISSUE_TOO_SOON', 'ACADEMIC_TRANSITION_ALREADY_APPLIED'].includes(code)) return 409;
   return 400;
 }
 

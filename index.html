@@ -4,19 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f3a">
-  <title>WTS Central Registry</title>
+  <title>Way to Success Standard Schools · Central Registry</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/registry-workflows.css">
   <link rel="stylesheet" href="/password-ui.css">
+  <link rel="stylesheet" href="/brand-polish.css">
   <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="locked">
   <section class="auth-gate" id="authGate">
     <form id="gateForm" class="auth-card">
-      <div class="auth-brandline"><div class="auth-logo">WTS</div><div><span class="auth-eyebrow">WTS administration</span><small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small></div></div>
+      <div class="auth-brandline"><img class="auth-logo registry-logo" src="/public-school-logo.webp" alt="Way to Success Standard Schools logo"><div><span class="auth-eyebrow">Central administration</span><small>Way to Success Standard Schools · Ejigbo</small></div></div>
       <span class="auth-kicker">Secure management access</span>
       <h1>Central Registry</h1>
-      <p class="auth-subtitle">Manage official student, staff and portal records from one secure school registry. Use the staff number or official email provided by WTS management.</p>
+      <p class="auth-subtitle">Manage official student, staff and portal records from one secure school registry. Use the staff number or official email provided by school management.</p>
       <label>Staff number or official email<input id="adminCode" autocomplete="username" required></label>
       <label class="password-field">Password<div class="password-input-wrap"><input id="adminSecret" type="password" autocomplete="current-password" required><button type="button" class="password-toggle" data-password-toggle="adminSecret">Show password</button></div></label>
       <button class="primary" type="submit">Open Central Registry</button>
@@ -24,7 +25,7 @@
       <div class="auth-recovery-links"><a href="/activate.html?mode=reset">Forgot password</a><a href="/activate.html?mode=activation">Activate existing account</a><a href="/staff">Workspace sign-in</a></div>
       <section class="staff-registration-cta" aria-labelledby="newStaffTitle">
         <div class="staff-registration-topline"><span class="staff-registration-badge">NEW STAFF</span><span class="staff-registration-status">3-step registration</span></div>
-        <h2 id="newStaffTitle">Ready to join WTS?</h2>
+        <h2 id="newStaffTitle">Ready to join the school team?</h2>
         <p>Tell us about yourself in a short form. Management will review your details before any login or school-system access is created.</p>
         <div class="staff-registration-points"><span>✓ Short form</span><span>✓ No password needed</span></div>
         <a class="staff-registration-button" href="/register.html">Start staff registration</a>
@@ -34,7 +35,7 @@
 
   <div class="shell">
     <aside>
-      <div class="brand"><b>WTS</b><span>Central Registry</span></div>
+      <div class="brand"><img class="registry-logo" src="/public-school-logo.webp" alt="Way to Success Standard Schools logo"><span>Central Registry</span></div>
       <nav>
         <button class="nav active" data-view="dashboard">Dashboard</button>
         <button class="nav" data-view="students">Students</button>
@@ -49,11 +50,11 @@
 
     <main>
       <header>
-        <div><small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small><h1 id="title">Central Registry</h1></div>
+        <div><small>Way to Success Standard Schools · Ejigbo</small><h1 id="title">Central Registry</h1></div>
         <div class="actions"><button class="ghost" id="refresh">Refresh</button><button class="primary" id="login">Sign out</button></div>
       </header>
 
-      <div class="notice"><b>Register once:</b> every student receives a permanent WTS student number. Staff receive self-service only; management grants other portals separately.</div>
+      <div class="notice"><b>One official record:</b> every student receives a permanent school number. Staff receive self-service identity access; management grants other portals separately.</div>
 
       <section class="view active" id="view-dashboard">
         <div class="metrics">
@@ -64,7 +65,7 @@
         <div class="cards">
           <article class="card"><h2>Student admission</h2><p>Add a student, capture a photo, generate the permanent student number and save guardian contacts.</p><button class="primary" data-action="addStudent">Admit student</button></article>
           <article class="card"><h2>Staff registry</h2><p>Manage approved identities and staff records. Public registrations are approved separately.</p><button class="primary" data-open="staff">Open staff records</button></article>
-          <article class="card"><h2>Academic context</h2><p>Set the official session and term. The current context is the default for connected modules.</p><button class="primary" data-open="calendar">Open academic calendar</button></article>
+          <article class="card"><h2>Academic context</h2><p>Review the shared official session and term. When 3rd Term is complete, one handover applies promotion and opens the next session.</p><button class="primary" data-open="calendar">Open academic calendar</button></article>
         </div>
       </section>
 
@@ -103,8 +104,8 @@
         <div class="section-head"><div><small>OFFICIAL ACADEMIC CALENDAR</small><h2>Session and term control</h2></div><button class="ghost" id="calendarRefresh">Refresh</button></div>
         <div class="card official-context"><p class="panelEyebrow">CURRENT OFFICIAL CONTEXT</p><h2><span id="calendarCurrentSession">—</span><span class="context-divider">·</span><span id="calendarCurrentTerm">—</span></h2><p>Connected modules use this context for new work. Historical views do not change it.</p></div>
         <div class="workflow-grid">
-          <article class="card"><p class="panelEyebrow">NEW SESSION</p><h3>Create an academic session</h3><form id="sessionForm" class="form-grid compact-form"><label class="full">Session name<input id="newSessionName" placeholder="e.g. 2027/2028" required></label><label>Starts<input id="newSessionStarts" type="date"></label><label>Ends<input id="newSessionEnds" type="date"></label><button class="primary full" type="submit">Create session</button></form></article>
-          <article class="card"><p class="panelEyebrow">NEW TERM</p><h3>Create a term in an existing session</h3><form id="termForm" class="form-grid compact-form"><label class="full">Session<select id="newTermSession" required></select></label><label class="full">Term<select id="newTermName"><option>1st Term</option><option>2nd Term</option><option>3rd Term</option></select></label><label>Starts<input id="newTermStarts" type="date"></label><label>Ends<input id="newTermEnds" type="date"></label><button class="primary full" type="submit">Create term</button></form></article>
+          <article class="card transition-card"><p class="panelEyebrow">SESSION HANDOVER</p><h3>Carry the completed year forward</h3><p class="transition-copy">Central Registry calculates the next session and opens its first term automatically. Promotion thresholds are applied to JS1, JS2 and SS1; students below their class threshold are detained/retained, while SS3 is archived as graduating.</p><div class="transition-target"><span>Next official context</span><strong><span id="calendarNextSession">—</span> <span class="context-divider">·</span> <span id="calendarNextTerm">1st Term</span></strong></div><button class="primary full" type="button" id="transitionNextSession">Carry forward and open next session</button><p class="transition-warning">This is the only place that changes the official session. Results Portal will follow it automatically.</p></article>
+          <article class="card transition-card"><p class="panelEyebrow">OFFICIAL CONTEXT</p><h3>One shared academic source</h3><p class="transition-copy">Dates are not required for the session handover. The current session and term are managed here and shown automatically in Results, Workspace summaries and connected services.</p><div class="transition-current"><span>Currently open</span><strong><span id="calendarCurrentSessionSummary">—</span> <span class="context-divider">·</span> <span id="calendarCurrentTermSummary">—</span></strong></div><button class="ghost full" type="button" id="calendarRefreshSecondary">Refresh official context</button></article>
         </div>
         <div class="card"><div class="section-head"><div><p class="panelEyebrow">TERM STATUS</p><h3>Open, closed and archived terms</h3></div></div><div id="calendarTerms"></div></div>
       </section>
