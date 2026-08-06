@@ -13,19 +13,20 @@
 <body class="locked">
   <section class="auth-gate" id="authGate">
     <form id="gateForm" class="auth-card">
-      <div class="auth-logo">WTS</div>
-      <small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small>
-      <h1>Central Registry Login</h1>
-      <p>Student, guardian, staff and portal-access records are restricted to authorized registry management. Existing staff account activation and password recovery use a one-time code issued by management.</p>
+      <div class="auth-brandline"><div class="auth-logo">WTS</div><div><span class="auth-eyebrow">WTS administration</span><small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small></div></div>
+      <span class="auth-kicker">Secure management access</span>
+      <h1>Central Registry</h1>
+      <p class="auth-subtitle">Manage official student, staff and portal records from one secure school registry. Use the staff number or official email provided by WTS management.</p>
       <label>Staff number or official email<input id="adminCode" autocomplete="username" required></label>
       <label class="password-field">Password<div class="password-input-wrap"><input id="adminSecret" type="password" autocomplete="current-password" required><button type="button" class="password-toggle" data-password-toggle="adminSecret">Show password</button></div></label>
       <button class="primary" type="submit">Open Central Registry</button>
       <div class="auth-error" id="authError" role="alert" aria-live="polite"></div>
       <div class="auth-recovery-links"><a href="/activate.html?mode=reset">Forgot password</a><a href="/activate.html?mode=activation">Activate existing account</a><a href="/staff">Workspace sign-in</a></div>
       <section class="staff-registration-cta" aria-labelledby="newStaffTitle">
-        <span class="staff-registration-badge">NEW STAFF</span>
-        <h2 id="newStaffTitle">Are you a new staff member?</h2>
-        <p>Register your details here. Management will review your registration before creating login or portal access.</p>
+        <div class="staff-registration-topline"><span class="staff-registration-badge">NEW STAFF</span><span class="staff-registration-status">3-step registration</span></div>
+        <h2 id="newStaffTitle">Ready to join WTS?</h2>
+        <p>Tell us about yourself in a short form. Management will review your details before any login or school-system access is created.</p>
+        <div class="staff-registration-points"><span>✓ Short form</span><span>✓ No password needed</span></div>
         <a class="staff-registration-button" href="/register.html">Start staff registration</a>
       </section>
     </form>
