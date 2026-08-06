@@ -153,11 +153,16 @@
   }
 
   function renderPortals(portals = []) {
-    $("#staffPortalCards").innerHTML = portals.map((portal) => {
-      const active = portal.grant_status === "active";
-      const url = active ? portalUrls[portal.app_code] : null;
-      const displayName = portal.app_code === "staff_self_service" ? "Workspace" : portal.app_name;
-      return `<article class="staff-portal-card ${active ? "active" : ""}"><header><strong>${escapeHtml(displayName)}</strong><span class="badge ${active ? "active" : "revoked"}">${active ? "Granted" : "Not granted"}</span></header><p>${escapeHtml(portal.description || "")}</p>${active && url ? `<a class="primary" href="${url}" ${url.startsWith("http") ? "target=\"_blank\" rel=\"noopener\"" : ""}>Open ${escapeHtml(displayName)}</a>` : active ? "<span class=\"not-granted\">Access is active; the portal link will be added when that system is deployed.</span>" : "<span class=\"not-granted\">Management has not assigned this portal.</span>"}</article>`;
+    const activePortals = portals.filter((portal) => portal.grant_status === "active" && portal.app_code !== "staff_self_service");
+    if (!activePortals.length) {
+      $("#staffPortalCards").innerHTML = `<div class="staff-access-empty"><span class="staff-access-empty-icon" aria-hidden="true">✓</span><strong>No specialist service is assigned yet.</strong><p>Your Workspace is active. When management grants another WTS service, it will appear here automatically.</p></div>`;
+      return;
+    }
+    $("#staffPortalCards").innerHTML = activePortals.map((portal) => {
+      const url = portalUrls[portal.app_code] || null;
+      const displayName = portal.app_name || portal.app_code;
+      const icon = ({ attendance: "A", central_registry: "R", results: "∑", notifications: "N", finance: "₦" })[portal.app_code] || "WTS";
+      return `<article class="staff-portal-card active"><div class="staff-portal-icon" aria-hidden="true">${escapeHtml(icon)}</div><header><div><span class="staff-portal-label">ACTIVE SERVICE</span><strong>${escapeHtml(displayName)}</strong></div><span class="badge active">Granted</span></header><p>${escapeHtml(portal.description || "Ready to open from your WTS Workspace.")}</p>${url ? `<a class="primary" href="${url}" ${url.startsWith("http") ? "target=\"_blank\" rel=\"noopener\"" : ""}>Open service <span aria-hidden="true">↗</span></a>` : "<span class=\"not-granted\">This service is assigned and will be available here when its launch page is connected.</span>"}</article>`;
     }).join("");
   }
 

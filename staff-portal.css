@@ -1,1 +1,50 @@
 .staff-locked .staff-app{display:none}.staff-login{min-height:100vh;display:grid;place-items:center;padding:22px;background:linear-gradient(145deg,#0b1f3a,#17436f)}body:not(.staff-locked) .staff-login{display:none}.staff-login-card{width:min(440px,100%);background:#fff;border-radius:22px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.28)}.staff-login-card small,.staff-header small{color:#0f7c5c;font-weight:800;letter-spacing:.08em}.staff-login-card h1{margin:10px 0}.staff-login-card p{color:#667085;line-height:1.5}.staff-login-card .primary{width:100%}.back-link{display:block;margin-top:16px;text-align:center;color:#175cd3;text-decoration:none;font-weight:700}.staff-app{max-width:1180px;margin:auto;padding:0 22px 40px}.staff-header{min-height:92px;display:flex;align-items:center;justify-content:space-between;gap:14px}.staff-header h1{margin:4px 0}.staff-profile-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:18px}.profile-photo-wrap{display:flex;align-items:center;gap:16px;margin-bottom:20px}.staff-photo{width:110px;height:110px;border-radius:20px;object-fit:cover;background:#e8eef6;border:1px solid #d0d5dd}.profile-photo-wrap h2{margin:0}.profile-photo-wrap p{color:#667085}.staff-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.staff-form label{display:grid;gap:6px;font-size:12px;font-weight:700;margin:0}.staff-form input,.staff-form textarea{width:100%;padding:10px;border:1px solid #d0d5dd;border-radius:9px;background:#fff}.staff-form .full{grid-column:1/-1}.staff-app .portal-grid{grid-template-columns:1fr 1fr}.staff-portal-card{border:1px solid #dfe6ee;border-radius:14px;padding:15px;background:#fff}.staff-portal-card.active{border-color:#75e0a7;background:#ecfdf3}.staff-portal-card header{min-height:0;display:flex;justify-content:space-between;align-items:start;gap:10px}.staff-portal-card p{color:#667085;font-size:12px;line-height:1.45}.staff-portal-card a{display:inline-flex;text-decoration:none;margin-top:8px}.staff-portal-card .not-granted{display:block;margin-top:8px;color:#98a2b3;font-size:11px;font-weight:700}.staff-profile-grid .photo-field{grid-column:1/-1}.auth-error{min-height:18px;margin-top:10px;color:#b42318;font-size:12px}@media(max-width:780px){.staff-app{padding:0 13px 28px}.staff-header{position:sticky;top:0;background:#f4f7fb;z-index:10;min-height:76px}.staff-header h1{font-size:22px}.staff-header .actions{gap:5px}.staff-header .actions button{padding:8px;font-size:11px}.staff-profile-grid{grid-template-columns:1fr}.staff-form{grid-template-columns:1fr}.staff-form .full{grid-column:auto}.staff-app .portal-grid{grid-template-columns:1fr}.profile-photo-wrap{align-items:flex-start}.staff-photo{width:88px;height:88px}.staff-login-card{padding:22px;border-radius:18px}}
+
+/* Final staff Workspace polish: active services only, with a quieter mobile hierarchy. */
+body:has(.staff-app) { background: #eef4f1; }
+.staff-login { padding: clamp(16px, 4vw, 34px); background: radial-gradient(circle at 12% 12%, rgba(214,168,79,.24), transparent 27%), radial-gradient(circle at 88% 88%, rgba(15,124,92,.25), transparent 30%), linear-gradient(145deg, #071a33, #0b1f3a 52%, #17436f); }
+.staff-login-card { position: relative; width: min(470px, 100%); padding: clamp(23px, 5vw, 36px); border: 1px solid rgba(255,255,255,.55); border-radius: 28px; box-shadow: 0 30px 90px rgba(0,0,0,.34); overflow: hidden; }
+.staff-login-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 5px; background: linear-gradient(90deg, #d6a84f, #f4d58a, #0f7c5c); }
+.staff-login-card .auth-logo { width: 64px; height: 64px; margin-bottom: 20px; border-radius: 18px; background: linear-gradient(145deg, #f3d37c, #d6a84f); box-shadow: 0 10px 22px rgba(146,100,18,.18); font-size: 1.05rem; letter-spacing: .04em; }
+.staff-login-card h1 { color: #0b1f3a; font-size: clamp(1.95rem, 6vw, 2.5rem); letter-spacing: -.04em; }
+.staff-login-card p { max-width: 38ch; margin-top: 0; font-size: .94rem; }
+.staff-login-card label { display: grid; gap: 7px; margin-top: 15px; color: #344054; font-size: .78rem; font-weight: 850; }
+.staff-login-card label input { min-height: 48px; padding: 12px 13px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fbfdff; font-size: 1rem; }
+.staff-login-card label input:focus { border-color: #0f7c5c; box-shadow: 0 0 0 4px rgba(15,124,92,.12); outline: 0; }
+.staff-login-card > .primary { min-height: 50px; margin-top: 20px; border-radius: 12px; background: linear-gradient(135deg, #0b1f3a, #123d68); box-shadow: 0 10px 20px rgba(11,31,58,.18); }
+.staff-login-card > .primary:hover, .staff-login-card > .primary:focus-visible { background: linear-gradient(135deg, #0f7c5c, #0b654b); }
+.staff-app { max-width: 1240px; padding: 0 26px 48px; }
+.staff-header { min-height: 108px; border-bottom: 1px solid #dbe7e1; }
+.staff-header h1 { color: #0b1f3a; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.045em; }
+.staff-profile-grid { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 22px; margin-top: 22px; }
+.staff-profile-grid > .card { border: 1px solid #dfe9e3; border-radius: 22px; box-shadow: 0 18px 45px rgba(13,53,80,.07); }
+.profile-photo-wrap { padding-bottom: 20px; border-bottom: 1px solid #e5eee8; }
+.staff-photo { border-radius: 50%; border: 4px solid #e9f7ef; }
+.profile-photo-wrap h2 { color: #0b1f3a; font-size: 1.45rem; letter-spacing: -.02em; }
+.access-card .section-head { align-items: flex-start; margin-top: 0; }
+.access-card .section-head h2 { margin: 6px 0 3px; color: #0b1f3a; font-size: clamp(1.8rem, 3vw, 2.35rem); letter-spacing: -.04em; }
+.access-card-intro { margin: 0; color: #667085; font-size: .82rem; line-height: 1.45; }
+.staff-app .portal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.staff-portal-card { position: relative; min-height: 205px; padding: 18px; border: 1px solid #d9ebe0; border-radius: 18px; background: linear-gradient(145deg, #f5fff9, #fff); box-shadow: 0 10px 25px rgba(13,53,80,.04); overflow: hidden; }
+.staff-portal-card::after { content: ""; position: absolute; width: 110px; height: 110px; right: -58px; bottom: -58px; border-radius: 50%; background: rgba(156,229,192,.24); }
+.staff-portal-card.active { border-color: #9adcbc; background: linear-gradient(145deg, #edfcf3, #fff); }
+.staff-portal-icon { display: grid; width: 38px; height: 38px; place-items: center; margin-bottom: 14px; border-radius: 12px; background: #0b2b48; color: #9ce5c0; font-size: .82rem; font-weight: 900; }
+.staff-portal-card header { min-height: 0; align-items: flex-start; }
+.staff-portal-label { display: block; margin-bottom: 5px; color: #0f7c5c; font-size: .61rem; font-weight: 900; letter-spacing: .1em; }
+.staff-portal-card header strong { color: #0b1f3a; font-size: 1.12rem; line-height: 1.14; }
+.staff-portal-card p { min-height: 40px; margin: 12px 0 0; color: #607084; font-size: .78rem; line-height: 1.48; }
+.staff-portal-card a { position: relative; z-index: 1; align-items: center; gap: 8px; margin-top: 14px; border-radius: 10px; background: #0b2b48; }
+.staff-portal-card a:hover, .staff-portal-card a:focus-visible { background: #0f7c5c; }
+.staff-portal-card .not-granted { position: relative; z-index: 1; display: block; margin-top: 14px; color: #64748b; font-size: .73rem; line-height: 1.4; }
+.staff-access-empty { display: grid; place-items: center; min-height: 220px; padding: 28px; border: 1px dashed #afdcc0; border-radius: 18px; background: #f4fbf7; text-align: center; }
+.staff-access-empty-icon { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 12px; border-radius: 50%; background: #d8f5e3; color: #0f7c5c; font-size: 1.2rem; font-weight: 900; }
+.staff-access-empty strong { color: #0b1f3a; font-size: 1rem; }
+.staff-access-empty p { max-width: 34ch; margin: 8px 0 0; color: #667085; font-size: .8rem; line-height: 1.5; }
+@media (max-width: 780px) {
+  .staff-app { padding: 0 14px 32px; }
+  .staff-header { min-height: 82px; }
+  .staff-header h1 { font-size: 2rem; }
+  .staff-profile-grid { grid-template-columns: 1fr; margin-top: 15px; }
+  .staff-app .portal-grid { grid-template-columns: 1fr; }
+  .staff-portal-card { min-height: 180px; }
+}

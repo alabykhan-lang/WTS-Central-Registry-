@@ -16,13 +16,13 @@
       <div class="auth-logo">WTS</div>
       <small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small>
       <h1>Workspace sign-in</h1>
-      <p>Sign in with your official email or Staff Number to view your WTS profile and assigned systems. Existing staff without an active WTS password can use a one-time code issued by authorised management.</p>
+      <p>Use your official email or Staff Number to enter your WTS Workspace.</p>
       <label>Staff Number or official email<input id="staffLoginName" autocomplete="username" required placeholder="WTS/STF/000001"></label>
       <label class="password-field">Password<div class="password-input-wrap"><input id="staffPassword" type="password" autocomplete="current-password" required><button type="button" class="password-toggle" data-password-toggle="staffPassword">Show password</button></div></label>
       <button class="primary" type="submit">Open Workspace</button>
       <div class="auth-error" id="staffLoginError" role="alert" aria-live="polite"></div>
       <div class="auth-recovery-links"><a href="/activate.html?mode=reset">Forgot password / reset</a><a href="/activate.html?mode=activation">Activate existing account</a><a href="/register.html">New staff registration</a></div>
-      <a class="back-link" href="/">Central Registry management sign-in</a>
+      <a class="back-link" href="/">Management access</a>
     </form>
   </section>
 
@@ -42,7 +42,7 @@
           <button class="primary full" type="submit">Save my profile</button>
         </form>
       </article>
-      <article class="card"><div class="section-head"><div><small>MY ACCESS</small><h2>Assigned school systems</h2></div></div><div class="portal-grid" id="staffPortalCards"></div></article>
+      <article class="card access-card"><div class="section-head"><div><small>ACTIVE SERVICES</small><h2>Your WTS access</h2><p class="access-card-intro">Only services currently granted to you are shown.</p></div></div><div class="portal-grid" id="staffPortalCards"></div></article>
     </section>
   </main>
 
