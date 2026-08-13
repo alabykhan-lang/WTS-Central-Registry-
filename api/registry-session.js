@@ -15,7 +15,7 @@ const CENTRAL_MANAGEMENT_PERMISSIONS = new Set([
 ]);
 const SSO_CLIENT_ID = 'central_registry';
 const REGISTRY_ORIGIN = process.env.WTS_REGISTRY_ORIGIN || 'https://wts-central-registry.vercel.app';
-const SSO_REDIRECT_URI = `${REGISTRY_ORIGIN.replace(/\\/$/, '')}/`;
+const SSO_REDIRECT_URI = `${REGISTRY_ORIGIN.replace(/\/$/, '')}/`;
 
 function isUrlSafe(value, min, max) {
   return typeof value === 'string'
