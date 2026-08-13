@@ -13,10 +13,20 @@ const CENTRAL_MANAGEMENT_PERMISSIONS = new Set([
   'staff_management.administer',
   'system_administration.administer',
 ]);
+const SSO_CLIENT_ID = 'central_registry';
+const REGISTRY_ORIGIN = process.env.WTS_REGISTRY_ORIGIN || 'https://wts-central-registry.vercel.app';
+const SSO_REDIRECT_URI = `${REGISTRY_ORIGIN.replace(/\\/$/, '')}/`;
+
+function isUrlSafe(value, min, max) {
+  return typeof value === 'string'
+    && value.length >= min
+    && value.length <= max
+    && /^[A-Za-z0-9._~-]+$/.test(value);
+}
 
 function hasCentralManagementPermission(permissions) {
   return Array.isArray(permissions)
-    && permissions.some((permission) => CENTRAL_MANAGEMENT_PERMISSIONS.has(permission));
+    && (permissions.includes('*') || permissions.some((permission) => CENTRAL_MANAGEMENT_PERMISSIONS.has(permission)));
 }
 
 function send(res, status, payload, cookie) {
@@ -101,6 +111,61 @@ module.exports = async function registrySession(req, res) {
   }
   const input = await body(req);
   if (!input || typeof input !== 'object') return send(res, 400, { ok: false, code: 'INVALID_REQUEST' });
+  if (input.action === 'sso_exchange') {
+    const grantType = typeof input.grant_type === 'string' ? input.grant_type : '';
+    const clientId = typeof input.client_id === 'string' ? input.client_id : '';
+    const redirectUri = typeof input.redirect_uri === 'string' ? input.redirect_uri : '';
+    const code = typeof input.code === 'string' ? input.code : '';
+    const codeVerifier = typeof input.code_verifier === 'string' ? input.code_verifier : '';
+    const state = typeof input.state === 'string' ? input.state : '';
+    const nonce = typeof input.nonce === 'string' ? input.nonce : '';
+    if (
+      grantType !== 'authorization_code'
+      || clientId !== SSO_CLIENT_ID
+      || redirectUri !== SSO_REDIRECT_URI
+      || !isUrlSafe(code, 43, 512)
+      || !isUrlSafe(codeVerifier, 43, 128)
+      || !isUrlSafe(state, 16, 512)
+      || !isUrlSafe(nonce, 16, 512)
+    ) {
+      return send(res, 400, { ok: false, code: 'SSO_REQUEST_INVALID' }, clearCookie());
+    }
+    const exchanged = await rpc('school_sso_authorization_code_exchange', {
+      p_code: code,
+      p_client_id: clientId,
+      p_redirect_uri: redirectUri,
+      p_code_verifier: codeVerifier,
+      p_state: state,
+      p_nonce: nonce,
+    });
+    if (!exchanged?.ok) {
+      const exchangeCode = exchanged?.code || 'CENTRAL_SSO_EXCHANGE_FAILED';
+      const exchangeStatus = exchangeCode === 'CENTRAL_REGISTRY_ACCESS_NOT_GRANTED' || exchangeCode === 'MANAGEMENT_ACCESS_DENIED'
+        ? 403
+        : exchangeCode.startsWith('SSO_') ? 400 : 401;
+      return send(res, exchangeStatus, exchanged || { ok: false, code: exchangeCode }, clearCookie());
+    }
+    if (!exchanged.session_id || !exchanged.session_secret) {
+      return send(res, 503, { ok: false, code: 'CENTRAL_SESSION_SERVICE_UNAVAILABLE' }, clearCookie());
+    }
+    if (!hasCentralManagementPermission(exchanged.permissions)) {
+      await rpc('school_identity_session_revoke', {
+        p_session_id: exchanged.session_id,
+        p_session_secret: exchanged.session_secret,
+        p_reason: 'CENTRAL_MANAGEMENT_PERMISSION_REQUIRED',
+      });
+      return send(res, 403, { ok: false, code: 'MANAGEMENT_ACCESS_DENIED' }, clearCookie());
+    }
+    return send(res, 200, {
+      ok: true,
+      code: 'CENTRAL_SSO_SESSION_ISSUED',
+      expires_at: exchanged.expires_at,
+      person_id: exchanged.person_id,
+      identity_account_id: exchanged.identity_account_id,
+      access_role: exchanged.access_role,
+      permissions: exchanged.permissions || [],
+    }, sessionCookie(exchanged.session_id, exchanged.session_secret));
+  }
   if (input.action === 'logout') {
     const current = session(req);
     if (current) await rpc('school_identity_session_revoke', { p_session_id: current.id, p_session_secret: current.secret, p_reason: 'CENTRAL_REGISTRY_LOGOUT' });
