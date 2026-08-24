@@ -19,6 +19,18 @@
   object-fit: contain;
 }
 
+.camera-capture video[hidden] {
+  display: none;
+}
+
+.camera-capture-status {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .camera-capture-actions {
   display: flex;
   justify-content: center;

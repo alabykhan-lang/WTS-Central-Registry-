@@ -14,8 +14,14 @@ assert.match(studentForm, /\["male", "Male"\]/);
 assert.match(studentForm, /\["female", "Female"\]/);
 assert.doesNotMatch(studentForm, /\["unknown", "Unknown"\]/);
 assert.doesNotMatch(studentForm, /Message language|notificationConsent/);
+assert.doesNotMatch(studentForm, /field\("phone"|field\("whatsapp"/);
+assert.match(studentForm, /Contact number \(preferably WhatsApp\)/);
+assert.match(studentForm, /phone: v\.contactNumber/);
+assert.match(studentForm, /whatsapp: v\.contactNumber/);
 assert.match(studentForm, /photoField\(s\.photo \|\| "", true\)/);
 assert.match(records, /navigator\.mediaDevices\.getUserMedia/);
+assert.match(records, /Choose from gallery.*photoGallery/);
+assert.match(records, /Waiting for camera permission/);
 assert.match(index, /<button type="button" class="ghost" id="cancelRecord">Cancel<\/button>/);
 assert.match(bootstrap, /cancelRecord.*formDialog.*close\('cancel'\)/);
 
