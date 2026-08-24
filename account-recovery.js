@@ -18,6 +18,8 @@
     return ({
       MANAGEMENT_CODE_INPUT_REQUIRED: 'Enter your Staff Number, management code and matching passwords.',
       MANAGEMENT_CODE_INVALID: 'That code is invalid, expired or already used. Ask authorised management for a new code.',
+      SHARED_TEACHER_CODE_INVALID: 'The Staff Number or shared teacher access code is invalid.',
+      SHARED_TEACHER_RECOVERY_FAILED: 'The teacher account could not be updated. Please contact Registry management.',
       ACCOUNT_NOT_ACTIVE: 'This staff identity is not active. Contact Registry management.',
       PASSWORD_REQUIREMENTS_NOT_MET: 'Use at least 10 characters with uppercase, lowercase and a number.',
       MANAGEMENT_CODE_COMPLETION_FAILED: 'The account could not be updated. Ask authorised management to issue a new code.',
@@ -36,7 +38,7 @@
     const confirmPassword = $('#recoveryPasswordConfirm').value;
     if (password !== confirmPassword) return setStatus('The passwords do not match.', 'error');
     button.disabled = true;
-    setStatus('Checking the one-time code and saving your password…');
+    setStatus('Checking the teacher access code and saving your password…');
     try {
       const response = await fetch('/api/account-recovery', {
         method: 'POST',
@@ -75,8 +77,8 @@
     $('#recoveryIntro').textContent = tokenFlow
       ? 'This secure link can be used once and expires shortly. Choose a new password to continue.'
       : isReset
-        ? 'Use the one-time password-recovery code issued by authorised management. Email is not required.'
-        : 'Use the one-time activation code issued by authorised management. Email is not required.';
+        ? 'Use the shared WTS teacher access code with your Staff Number to choose a new password.'
+        : 'Use the shared WTS teacher access code with your Staff Number to activate your account.';
     $('#recoveryCodeButton').textContent = isReset ? 'Reset password' : 'Activate account';
     $('#activationModeLink').classList.toggle('active', !isReset);
     $('#resetModeLink').classList.toggle('active', isReset);

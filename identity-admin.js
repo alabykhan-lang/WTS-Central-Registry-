@@ -18,17 +18,6 @@
     return result;
   }
 
-  async function write(action, payload = {}) {
-    const response = await fetch("/api/registry-management", {
-      method: "POST", credentials: "same-origin",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ operation: "identityWrite", action, payload }),
-    });
-    const result = await response.json().catch(() => ({ ok: false, code: "REGISTRY_MANAGEMENT_INVALID_RESPONSE" }));
-    if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || "REGISTRY_MANAGEMENT_FAILED"), { code: result?.code });
-    return result;
-  }
-
   async function loadAccounts(force = false) {
     if (loading || (accounts.length && !force)) return;
     loading = true;
@@ -42,70 +31,21 @@
     }
   }
 
-  function date(value) {
-    if (!value) return "";
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.valueOf()) ? "" : parsed.toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
-  }
-
   function accountMessage(current) {
     const status = current.credential_status || "pending";
     if (status === "pending" || !current.credential_id) {
-      return "This existing identity has no active WTS password yet. Issue an activation code below; management never creates or sees a password.";
+      return "This existing teacher can use the shared WTS teacher code with their Staff Number to create a password.";
     }
-    if (current.must_change_password) return "The account is ready for first-login password creation. A recovery code can complete that process without email.";
-    return "The staff member can sign in normally. Issue a password-recovery code only when access needs to be restored.";
+    if (current.must_change_password) return "The teacher can use the shared WTS teacher code to complete first-login password creation.";
+    return "The teacher can sign in normally and may use the shared WTS teacher code for self-service password recovery.";
   }
 
   function codeCard(current) {
     return `<section class="identity-code-panel">
-      <div class="identity-code-heading"><div><p class="panelEyebrow">NO-EMAIL ACCOUNT HELP</p><h3>Issue a one-time access code</h3></div><span class="badge active">MANAGEMENT ONLY</span></div>
-      <p>Give the code directly to this existing staff member through the school office or official school WhatsApp. It expires in 30 minutes, works once, and does not create another identity.</p>
-      <div class="row-actions identity-code-actions"><button class="primary" type="button" data-issue-code="activation">Issue activation code</button><button class="ghost" type="button" data-issue-code="password_reset">Issue password-recovery code</button></div>
-      <div class="identity-code-result" id="identityCodeResult" hidden><strong>Share this code privately with ${esc(current.full_name)}.</strong><code id="identityCodeValue"></code><div class="row-actions"><button class="ghost" type="button" id="copyIdentityCode">Copy code</button><button class="ghost" type="button" id="hideIdentityCode">Hide code</button></div><small id="identityCodeExpiry"></small></div>
-      <small class="accessMeta">The raw code is shown once in this management session. Only its hash is stored and every issuance/completion is audited.</small>
+      <div class="identity-code-heading"><div><p class="panelEyebrow">TEACHER SELF-SERVICE</p><h3>Shared teacher access enabled</h3></div><span class="badge active">NO ISSUANCE NEEDED</span></div>
+      <p>${esc(current.full_name)} can use their Staff Number and the school’s shared teacher access code on the activation or password-reset page. Management does not need to generate an individual code.</p>
+      <small class="accessMeta">Every successful activation or password reset is recorded against the individual teacher account.</small>
     </section>`;
-  }
-
-  function installCodeHandlers(current) {
-    document.querySelectorAll("[data-issue-code]").forEach((button) => {
-      button.onclick = async () => {
-        const statusNode = $("#identityCodeExpiry");
-        const purpose = button.dataset.issueCode;
-        const buttons = document.querySelectorAll("[data-issue-code]");
-        buttons.forEach((item) => { item.disabled = true; });
-        if (statusNode) statusNode.textContent = "Generating a secure one-time code…";
-        try {
-          const result = await write("issueRecoveryCode", {
-            staffId: current.staff_id,
-            purpose,
-          });
-          if (!result.recovery_code) throw new Error("RECOVERY_CODE_ISSUE_FAILED");
-          const output = $("#identityCodeResult");
-          const value = $("#identityCodeValue");
-          if (value) value.textContent = result.recovery_code;
-          if (statusNode) statusNode.textContent = `Expires ${date(result.expires_at)} · ${purpose === "activation" ? "activation" : "password recovery"} code`;
-          if (output) output.hidden = false;
-          toast("One-time access code issued. Share it privately with the staff member.", "success");
-        } catch (error) {
-          if (statusNode) statusNode.textContent = String(error?.code || error?.message || "Code issue failed").replaceAll("_", " ");
-          toast(error instanceof Error ? error.message : "Access code issue failed.", "error");
-        } finally {
-          buttons.forEach((item) => { item.disabled = false; });
-        }
-      };
-    });
-    $("#hideIdentityCode")?.addEventListener("click", () => { $("#identityCodeResult").hidden = true; });
-    $("#copyIdentityCode")?.addEventListener("click", async () => {
-      const value = $("#identityCodeValue")?.textContent || "";
-      if (!value) return;
-      try {
-        await navigator.clipboard.writeText(value);
-        toast("Code copied. Share it privately.", "success");
-      } catch {
-        toast("Copy was blocked by the browser. Select the code and copy it manually.", "error");
-      }
-    });
   }
 
   async function render() {
@@ -127,7 +67,6 @@
     const status = current.credential_status || "pending";
     const accountStatus = current.account_status || "unavailable";
     card.innerHTML = `<header><strong>Central WTS identity</strong><span class="badge ${status === "active" && !locked ? "active" : "revoked"}">${esc(locked ? "locked" : status)}</span></header><p>Login: <strong>${esc(current.login_name || current.staff_number)}</strong></p><p>Account: <strong>${esc(accountStatus)}</strong>. ${esc(accountMessage(current))}</p>${codeCard(current)}`;
-    installCodeHandlers(current);
   }
 
   function install() {

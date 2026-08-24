@@ -60,6 +60,20 @@ async function consumeManagementCode({ login, purpose, code, password }) {
   return response.ok ? result : { ok: false, code: result?.code || 'RECOVERY_SERVICE_UNAVAILABLE' };
 }
 
+async function consumeSharedTeacherCode({ login, code, password }) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/school_identity_shared_teacher_code_consume`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    body: JSON.stringify({
+      p_login: login,
+      p_code: code,
+      p_new_password: password,
+    }),
+  });
+  const result = await response.json().catch(() => ({ ok: false, code: 'SHARED_TEACHER_RECOVERY_INVALID_RESPONSE' }));
+  return response.ok ? result : { ok: false, code: result?.code || 'SHARED_TEACHER_RECOVERY_SERVICE_UNAVAILABLE' };
+}
+
 module.exports = async function accountRecovery(req, res) {
   if (!originAllowed(req)) return send(res, 403, { ok: false, code: 'ORIGIN_NOT_ALLOWED' });
   if (req.method !== 'POST') {
@@ -97,6 +111,14 @@ module.exports = async function accountRecovery(req, res) {
     const confirm = typeof input.confirmPassword === 'string' ? input.confirmPassword : '';
     if (!login || !code || !password || password !== confirm || password.length > 512) {
       return send(res, 400, { ok: false, code: 'MANAGEMENT_CODE_INPUT_REQUIRED' });
+    }
+    const sharedResult = await consumeSharedTeacherCode({ login, code, password });
+    if (sharedResult?.ok) {
+      return send(res, 200, {
+        ok: true,
+        code: sharedResult.code || 'SHARED_TEACHER_ACCESS_COMPLETED',
+        purpose,
+      });
     }
     const result = await consumeManagementCode({ login, purpose, code, password });
     if (!result?.ok) return send(res, 400, result || { ok: false, code: 'MANAGEMENT_CODE_COMPLETION_FAILED' });

@@ -15,7 +15,7 @@
       <div class="recovery-heading">
         <span class="recovery-kicker" id="recoveryKicker">EXISTING STAFF</span>
         <h1 id="recoveryTitle">Activate your existing account</h1>
-        <p id="recoveryIntro">Use the one-time code issued by authorised WTS management. Email is not required.</p>
+        <p id="recoveryIntro">Use the shared WTS teacher access code with your Staff Number. Email and management code issuance are not required.</p>
       </div>
       <div class="recovery-switch" role="tablist" aria-label="Account access options">
         <a id="activationModeLink" href="/activate.html?mode=activation">Activate account</a>
@@ -23,11 +23,11 @@
       </div>
       <div class="code-help">
         <strong>How to use this page</strong>
-        <span>Ask authorised management for a one-time code, then enter it below. The code expires in 30 minutes and works once only.</span>
+        <span>Enter your Staff Number and the shared teacher access code supplied by the school, then choose your new password.</span>
       </div>
       <form id="recoveryCodeForm" class="recovery-form">
         <label>Staff Number<input id="recoveryLogin" autocomplete="username" required maxlength="254" placeholder="WTS/STF/000001"></label>
-        <label>One-time management code<input id="recoveryCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required maxlength="32" placeholder="WTS-XXXXXXXXXXXXXXX"></label>
+        <label>Shared teacher access code<input id="recoveryCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required maxlength="32" placeholder="WTS-XXXXXXXXXXXXXXXX"></label>
         <label class="password-field">New password<div class="password-input-wrap"><input id="recoveryPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="512"><button type="button" class="password-toggle" data-password-toggle="recoveryPassword">Show password</button></div></label>
         <label class="password-field">Confirm password<div class="password-input-wrap"><input id="recoveryPasswordConfirm" type="password" autocomplete="new-password" required minlength="10" maxlength="512"><button type="button" class="password-toggle" data-password-toggle="recoveryPasswordConfirm">Show password</button></div></label>
         <p class="form-help">Use at least 10 characters with an uppercase letter, lowercase letter and number.</p>
