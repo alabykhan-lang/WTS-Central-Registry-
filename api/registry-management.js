@@ -95,7 +95,13 @@ module.exports = async function registryManagement(req, res) {
   const operation = typeof input.operation === 'string' ? input.operation.trim() : '';
   const rpcName = ROUTES[operation];
   if (!rpcName || typeof input.action !== 'string') return send(res, 400, { ok: false, code: 'MANAGEMENT_ACTION_REQUIRED' });
-  const payload = input.payload && typeof input.payload === 'object' ? input.payload : {};
+  const payload = input.payload && typeof input.payload === 'object' ? { ...input.payload } : {};
+  const action = input.action.trim().toLowerCase();
+  if (operation === 'identityWrite' && action === 'issuerecoverycode') {
+    payload.reason = payload.purpose === 'activation'
+      ? 'Existing staff account activation'
+      : 'Staff password recovery';
+  }
   const result = await rpc(rpcName, {
     p_session_id: current.id,
     p_session_secret: current.secret,
@@ -113,7 +119,6 @@ module.exports = async function registryManagement(req, res) {
     });
     return send(res, 200, { ...result, activation_email_status: activation.status });
   }
-  const action = input.action.trim().toLowerCase();
   if (payload.staffId && ((operation === 'accessWrite' && action === 'setmoduleaccess' && payload.enabled === true)
       || (operation === 'allocationWrite' && action === 'setclass' && payload.enabled !== false)
       || (operation === 'allocationWrite' && action === 'setsubjects' && Array.isArray(payload.subjectIndexes) && payload.subjectIndexes.length > 0))) {

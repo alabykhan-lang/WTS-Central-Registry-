@@ -61,7 +61,6 @@
     return `<section class="identity-code-panel">
       <div class="identity-code-heading"><div><p class="panelEyebrow">NO-EMAIL ACCOUNT HELP</p><h3>Issue a one-time access code</h3></div><span class="badge active">MANAGEMENT ONLY</span></div>
       <p>Give the code directly to this existing staff member through the school office or official school WhatsApp. It expires in 30 minutes, works once, and does not create another identity.</p>
-      <label>Reason for issuing this code<input id="identityCodeReason" minlength="8" maxlength="500" placeholder="e.g. Existing staff account activation"></label>
       <div class="row-actions identity-code-actions"><button class="primary" type="button" data-issue-code="activation">Issue activation code</button><button class="ghost" type="button" data-issue-code="password_reset">Issue password-recovery code</button></div>
       <div class="identity-code-result" id="identityCodeResult" hidden><strong>Share this code privately with ${esc(current.full_name)}.</strong><code id="identityCodeValue"></code><div class="row-actions"><button class="ghost" type="button" id="copyIdentityCode">Copy code</button><button class="ghost" type="button" id="hideIdentityCode">Hide code</button></div><small id="identityCodeExpiry"></small></div>
       <small class="accessMeta">The raw code is shown once in this management session. Only its hash is stored and every issuance/completion is audited.</small>
@@ -71,20 +70,16 @@
   function installCodeHandlers(current) {
     document.querySelectorAll("[data-issue-code]").forEach((button) => {
       button.onclick = async () => {
-        const reasonNode = $("#identityCodeReason");
         const statusNode = $("#identityCodeExpiry");
-        const reason = reasonNode?.value.trim() || "";
-        if (reason.length < 8) {
-          if (statusNode) statusNode.textContent = "Enter a reason of at least 8 characters before issuing a code.";
-          reasonNode?.focus();
-          return;
-        }
         const purpose = button.dataset.issueCode;
         const buttons = document.querySelectorAll("[data-issue-code]");
         buttons.forEach((item) => { item.disabled = true; });
         if (statusNode) statusNode.textContent = "Generating a secure one-time code…";
         try {
-          const result = await write("issueRecoveryCode", { staffId: current.staff_id, purpose, reason });
+          const result = await write("issueRecoveryCode", {
+            staffId: current.staff_id,
+            purpose,
+          });
           if (!result.recovery_code) throw new Error("RECOVERY_CODE_ISSUE_FAILED");
           const output = $("#identityCodeResult");
           const value = $("#identityCodeValue");

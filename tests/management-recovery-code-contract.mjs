@@ -27,5 +27,9 @@ assert.match(page, /Email is not required/);
 assert.match(admin, /Issue activation code/);
 assert.match(admin, /Issue password-recovery code/);
 assert.match(admin, /recovery_code/);
+assert.doesNotMatch(admin, /identityCodeReason|Reason for issuing this code/);
+assert.doesNotMatch(admin, /purpose, reason/);
+assert.match(managementApi, /Existing staff account activation/);
+assert.match(managementApi, /Staff password recovery/);
 
 console.log("Management recovery-code contract passed");

@@ -1,0 +1,75 @@
+#view-access,
+.access-layout,
+.access-detail,
+#accessDetail,
+.access-detail-stack,
+.accessModuleGrid,
+.accessModuleGrid .portal-grid,
+.accessModuleCard,
+.accessModuleCard .portal-controls {
+  min-width: 0;
+}
+
+.access-detail {
+  overflow-x: hidden;
+}
+
+.access-detail-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.access-detail-stack > *,
+.accessModuleGrid {
+  width: 100%;
+}
+
+.accessModuleGrid {
+  margin-top: 0;
+}
+
+.accessModuleGrid .portal-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
+}
+
+.accessModuleCard {
+  overflow-wrap: anywhere;
+}
+
+.accessModuleCard .accessDateGrid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+}
+
+.accessModuleCard input,
+.accessModuleCard select,
+.accessModuleCard button {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.accessModuleCard button,
+.identity-code-actions button {
+  white-space: normal;
+}
+
+.identity-code-actions {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.identity-code-actions button {
+  flex: 1 1 220px;
+}
+
+@media (max-width: 1180px) {
+  .access-layout {
+    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 980px) {
+  .access-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
