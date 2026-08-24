@@ -7,6 +7,7 @@
   <title>Way to Success Standard Schools · Central Registry</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/registry-workflows.css">
+  <link rel="stylesheet" href="/student-admission.css">
   <link rel="stylesheet" href="/password-ui.css">
   <link rel="stylesheet" href="/brand-polish.css">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -118,7 +119,7 @@
     </main>
   </div>
 
-  <dialog id="formDialog"><form method="dialog" id="recordForm"><h2 id="formTitle">Record</h2><div id="formBody" class="form-grid"></div><div class="dialog-actions"><button value="cancel" class="ghost">Cancel</button><button class="primary" value="default" id="saveRecord">Save</button></div></form></dialog>
+  <dialog id="formDialog"><form method="dialog" id="recordForm"><h2 id="formTitle">Record</h2><div id="formBody" class="form-grid"></div><div class="dialog-actions"><button type="button" class="ghost" id="cancelRecord">Cancel</button><button class="primary" value="default" id="saveRecord">Save</button></div></form></dialog>
   <dialog id="requiredPasswordDialog"><form method="dialog" id="requiredPasswordForm" class="password-dialog"><h2>Create your password</h2><p>You must create a new password before entering the Registry.</p><label class="password-field">New password<div class="password-input-wrap"><input id="requiredPassword" type="password" autocomplete="new-password" minlength="10" maxlength="512" required><button type="button" class="password-toggle" data-password-toggle="requiredPassword">Show password</button></div></label><label class="password-field">Confirm password<div class="password-input-wrap"><input id="requiredPasswordConfirm" type="password" autocomplete="new-password" minlength="10" maxlength="512" required><button type="button" class="password-toggle" data-password-toggle="requiredPasswordConfirm">Show password</button></div></label><div class="auth-error" id="requiredPasswordError" role="alert"></div><div class="dialog-actions"><button type="button" class="ghost" id="requiredPasswordCancel">Cancel</button><button class="primary" value="default">Save password</button></div></form></dialog>
   <div id="toasts"></div>
   <script src="/config.js"></script>

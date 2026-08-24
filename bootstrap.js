@@ -43,6 +43,7 @@ $('#studentClass').onchange=R.loadStudents;$('#studentStatus').onchange=R.loadSt
 $('#refresh').onclick=()=>R.loadContext().then(()=>state.views[state.currentView]?.()).catch(e=>{toast(e.message,'error');if(/AUTH|PERMISSION|login/i.test(e.message))signOut()});
 $('#login').onclick=signOut;
 $('#gateForm').onsubmit=e=>{e.preventDefault();$('#authError').textContent='Use the Central Registry staff login.'};
+$('#cancelRecord').onclick=()=>{state.handler=null;$('#formDialog').close('cancel')};
 $('#recordForm').onsubmit=async e=>{e.preventDefault();if(!state.handler)return;$('#saveRecord').disabled=true;try{await state.handler(e.currentTarget);$('#formDialog').close()}catch(err){toast(err.message,'error')}finally{$('#saveRecord').disabled=false}};
 W.connected(false);fetch('/api/registry-session',{credentials:'same-origin',headers:{Accept:'application/json'}}).then(async response=>{const result=await response.json().catch(()=>null);if(!response.ok||result?.ok===false)throw new Error(result?.code||'REGISTRY_SESSION_REQUIRED');state.connected=true;W.connected(true);await R.loadContext()}).catch(()=>{$('#adminCode').focus()});
 // Identity administration is loaded only after the Central Registry shell is

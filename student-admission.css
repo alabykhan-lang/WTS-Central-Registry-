@@ -1,0 +1,27 @@
+.camera-capture {
+  flex-basis: 100%;
+  padding: 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  background: #0b1f3a;
+}
+
+.camera-capture[hidden] {
+  display: none;
+}
+
+.camera-capture video {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  border-radius: 9px;
+  background: #000;
+  object-fit: contain;
+}
+
+.camera-capture-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}

@@ -110,31 +110,26 @@
       toast(e.message, "error");
     }
   }
-  function photoField(current = "") {
-    const blank =
-      "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22110%22 height=%22110%22%3E%3Crect width=%22110%22 height=%22110%22 rx=%2216%22 fill=%22%23e8eef6%22/%3E%3Ctext x=%2255%22 y=%2265%22 text-anchor=%22middle%22 font-size=%2234%22 fill=%22%23667085%22%3E%3F%3C/text%3E%3C/svg%3E";
-    return `<div class="photo-field"><strong>Photograph</strong><img class="photo-preview" id="photoPreview" src="${esc(current || blank)}" alt="Photo preview"><input type="hidden" name="photo" id="photoValue" value="${esc(current)}"><div class="photo-actions"><label>Choose from gallery<input type="file" id="photoGallery" accept="image/*"></label><label>Take photo<input type="file" id="photoCamera" accept="image/*" capture="environment"></label><button type="button" class="ghost" id="removePhoto">Remove photo</button></div><div class="photo-note">The photo is resized automatically before saving.</div></div>`;
+  const blankPhoto =
+    "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22110%22 height=%22110%22%3E%3Crect width=%22110%22 height=%22110%22 rx=%2216%22 fill=%22%23e8eef6%22/%3E%3Ctext x=%2255%22 y=%2265%22 text-anchor=%22middle%22 font-size=%2234%22 fill=%22%23667085%22%3E%3F%3C/text%3E%3C/svg%3E";
+  function photoField(current = "", cameraOnly = false) {
+    const controls = cameraOnly
+      ? '<button type="button" class="ghost" id="openPhotoCamera">Take photo</button><button type="button" class="ghost" id="removePhoto">Remove photo</button><div class="camera-capture" id="photoCameraPanel" hidden><video id="photoCameraPreview" autoplay muted playsinline aria-label="Live camera preview"></video><div class="camera-capture-actions"><button type="button" class="primary" id="capturePhoto">Capture photo</button><button type="button" class="ghost" id="closePhotoCamera">Close camera</button></div></div>'
+      : '<label>Choose from gallery<input type="file" id="photoGallery" accept="image/*"></label><label>Take photo<input type="file" id="photoCamera" accept="image/*" capture="environment"></label><button type="button" class="ghost" id="removePhoto">Remove photo</button>';
+    return `<div class="photo-field"><strong>Photograph</strong><img class="photo-preview" id="photoPreview" src="${esc(current || blankPhoto)}" alt="Photo preview"><input type="hidden" name="photo" id="photoValue" value="${esc(current)}"><div class="photo-actions">${controls}</div><div class="photo-note">The photo is resized automatically before saving.</div></div>`;
   }
-  async function compressPhoto(file) {
-    if (!file?.type?.startsWith("image/"))
-      throw new Error("Choose an image file.");
-    if (file.size > 12 * 1024 * 1024)
-      throw new Error("Choose a photo below 12 MB.");
-    const bitmap = await createImageBitmap(file, {
-        imageOrientation: "from-image",
-      }),
-      max = 560,
-      scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height)),
-      w = Math.max(1, Math.round(bitmap.width * scale)),
-      h = Math.max(1, Math.round(bitmap.height * scale)),
+  function photoData(source, sourceWidth, sourceHeight) {
+    const max = 560,
+      scale = Math.min(1, max / Math.max(sourceWidth, sourceHeight)),
+      w = Math.max(1, Math.round(sourceWidth * scale)),
+      h = Math.max(1, Math.round(sourceHeight * scale)),
       canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(bitmap, 0, 0, w, h);
-    bitmap.close?.();
+    ctx.drawImage(source, 0, 0, w, h);
     let quality = 0.76,
       data = canvas.toDataURL("image/jpeg", quality);
     while (data.length > 180000 && quality > 0.42) {
@@ -144,7 +139,21 @@
     if (data.length > 220000) throw new Error("Use a smaller photo.");
     return data;
   }
-  function bindPhotoPicker() {
+  async function compressPhoto(file) {
+    if (!file?.type?.startsWith("image/"))
+      throw new Error("Choose an image file.");
+    if (file.size > 12 * 1024 * 1024)
+      throw new Error("Choose a photo below 12 MB.");
+    const bitmap = await createImageBitmap(file, {
+      imageOrientation: "from-image",
+    });
+    try {
+      return photoData(bitmap, bitmap.width, bitmap.height);
+    } finally {
+      bitmap.close?.();
+    }
+  }
+  function bindPhotoPicker(cameraOnly = false) {
     const apply = async (file) => {
       try {
         $("#photoPreview").style.opacity = ".45";
@@ -158,11 +167,60 @@
         $("#photoPreview").style.opacity = "1";
       }
     };
-    $("#photoGallery").onchange = (e) => apply(e.target.files[0]);
-    $("#photoCamera").onchange = (e) => apply(e.target.files[0]);
+    if (cameraOnly) {
+      let stream = null;
+      const panel = $("#photoCameraPanel"),
+        video = $("#photoCameraPreview"),
+        stopCamera = () => {
+          stream?.getTracks().forEach((track) => track.stop());
+          stream = null;
+          video.srcObject = null;
+          panel.hidden = true;
+        };
+      $("#openPhotoCamera").onclick = async () => {
+        try {
+          if (!navigator.mediaDevices?.getUserMedia)
+            throw new Error("Camera access is not available on this device.");
+          stopCamera();
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "environment" } },
+            audio: false,
+          });
+          video.srcObject = stream;
+          panel.hidden = false;
+          await video.play();
+        } catch (e) {
+          stopCamera();
+          toast(
+            e.name === "NotAllowedError"
+              ? "Allow camera access to take the student photograph."
+              : e.message,
+            "error",
+          );
+        }
+      };
+      $("#capturePhoto").onclick = () => {
+        try {
+          if (!video.videoWidth || !video.videoHeight)
+            throw new Error("Wait for the camera preview, then try again.");
+          const data = photoData(video, video.videoWidth, video.videoHeight);
+          $("#photoValue").value = data;
+          $("#photoPreview").src = data;
+          stopCamera();
+          toast("Photo ready to save.", "success");
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      };
+      $("#closePhotoCamera").onclick = stopCamera;
+      $("#formDialog").addEventListener("close", stopCamera, { once: true });
+    } else {
+      $("#photoGallery").onchange = (e) => apply(e.target.files[0]);
+      $("#photoCamera").onchange = (e) => apply(e.target.files[0]);
+    }
     $("#removePhoto").onclick = () => {
       $("#photoValue").value = "";
-      $("#photoPreview").removeAttribute("src");
+      $("#photoPreview").src = blankPhoto;
     };
   }
   function studentForm(s = {}) {
@@ -179,11 +237,12 @@
           "gender",
           "Gender",
           [
-            ["unknown", "Unknown"],
             ["male", "Male"],
             ["female", "Female"],
           ],
-          String(s.gender || "unknown").toLowerCase(),
+          String(s.gender || "male").toLowerCase() === "female"
+            ? "female"
+            : "male",
         ) +
         number +
         field(
@@ -194,7 +253,7 @@
         ) +
         field("house", "House", s.house || "") +
         field("age", "Age", s.age || "") +
-        photoField(s.photo || "") +
+        photoField(s.photo || "", true) +
         (s.student_id
           ? ""
           : '<h3 class="full">Primary guardian</h3>' +
@@ -202,18 +261,7 @@
             field("relationship", "Relationship", "Parent/Guardian") +
             field("phone", "Phone") +
             field("whatsapp", "WhatsApp number") +
-            field("email", "Email", "", "email") +
-            select(
-              "preferredLanguage",
-              "Message language",
-              [
-                ["english", "English"],
-                ["yoruba", "Yoruba"],
-                ["both", "English and Yoruba"],
-              ],
-              "english",
-            ) +
-            '<label class="full"><input name="notificationConsent" type="checkbox" value="true"> Guardian consented to WhatsApp notifications</label>'),
+            field("email", "Email", "", "email")),
       async (f) => {
         const v = vals(f);
         let result;
@@ -234,8 +282,6 @@
               email: v.email,
               isPrimary: true,
               isLegalGuardian: true,
-              notificationConsent: v.notificationConsent === "true",
-              preferredLanguage: v.preferredLanguage,
             });
         }
         toast(
@@ -246,7 +292,7 @@
         );
         await Promise.all([loadContext(), loadStudents()]);
       },
-      bindPhotoPicker,
+      () => bindPhotoPicker(true),
     );
   }
   function guardianForm(studentId) {
