@@ -17,7 +17,7 @@
   function friendly(code) {
     return ({
       MANAGEMENT_CODE_INPUT_REQUIRED: 'Enter your Staff Number, management code and matching passwords.',
-      MANAGEMENT_CODE_INVALID: 'That code is invalid, expired or already used. Ask authorised management for a new code.',
+      MANAGEMENT_CODE_INVALID: 'The Staff Number or teacher access code is invalid.',
       SHARED_TEACHER_CODE_INVALID: 'The Staff Number or shared teacher access code is invalid.',
       SHARED_TEACHER_RECOVERY_FAILED: 'The teacher account could not be updated. Please contact Registry management.',
       ACCOUNT_NOT_ACTIVE: 'This staff identity is not active. Contact Registry management.',
