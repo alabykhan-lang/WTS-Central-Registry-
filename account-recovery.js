@@ -16,13 +16,13 @@
 
   function friendly(code) {
     return ({
-      MANAGEMENT_CODE_INPUT_REQUIRED: 'Enter your Staff Number, management code and matching passwords.',
+      MANAGEMENT_CODE_INPUT_REQUIRED: 'Enter your Staff Number, teacher access code and matching passwords.',
       MANAGEMENT_CODE_INVALID: 'The Staff Number or teacher access code is invalid.',
       SHARED_TEACHER_CODE_INVALID: 'The Staff Number or shared teacher access code is invalid.',
       SHARED_TEACHER_RECOVERY_FAILED: 'The teacher account could not be updated. Please contact Registry management.',
       ACCOUNT_NOT_ACTIVE: 'This staff identity is not active. Contact Registry management.',
       PASSWORD_REQUIREMENTS_NOT_MET: 'Use at least 10 characters with uppercase, lowercase and a number.',
-      MANAGEMENT_CODE_COMPLETION_FAILED: 'The account could not be updated. Ask authorised management to issue a new code.',
+      MANAGEMENT_CODE_COMPLETION_FAILED: 'The teacher account could not be updated. Please contact Registry management.',
       RECOVERY_TOKEN_INVALID: 'This secure link is invalid. Request a new one.',
       RECOVERY_TOKEN_EXPIRED: 'This secure link has expired. Request a new one.',
       RECOVERY_TOKEN_USED: 'This secure link has already been used. Request a new one.',
