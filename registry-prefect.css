@@ -1,0 +1,33 @@
+.compact-input,
+#prefectBootstrapStudents,
+#prefectBootstrapOffice {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.prefect-import-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 1fr) auto;
+  gap: 8px;
+}
+
+.compact-input {
+  min-width: 150px;
+}
+
+.panel-divider {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 14px 0;
+  border-block: 1px solid #edf0f4;
+}
+
+@media (max-width: 760px) {
+  .prefect-import-row {
+    grid-template-columns: 1fr;
+  }
+}

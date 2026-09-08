@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const records = await readFile(new URL("../records.js", import.meta.url), "utf8");
 const index = await readFile(new URL("../index.html", import.meta.url), "utf8");
-const bootstrap = await readFile(new URL("../bootstrap.js", import.meta.url), "utf8");
+const app = await readFile(new URL("../registry/app.js", import.meta.url), "utf8");
 
 const studentForm = records.slice(
   records.indexOf("function studentForm"),
@@ -22,7 +22,9 @@ assert.match(studentForm, /photoField\(s\.photo \|\| "", true\)/);
 assert.match(records, /navigator\.mediaDevices\.getUserMedia/);
 assert.match(records, /Choose from gallery.*photoGallery/);
 assert.match(records, /Waiting for camera permission/);
-assert.match(index, /<button type="button" class="ghost" id="cancelRecord">Cancel<\/button>/);
-assert.match(bootstrap, /cancelRecord.*formDialog.*close\('cancel'\)/);
+assert.match(index, /id="recordDialog"/);
+assert.match(index, /id="recordForm"/);
+assert.match(index, /type="module" src="\/registry\/app\.js"/);
+assert.match(app, /guardian\.upsert/);
 
 console.log("Student admission UI contract passed");

@@ -1,0 +1,88 @@
+import assert from 'node:assert/strict';
+import { readFile, readdir } from 'node:fs/promises';
+
+const root = new URL('../', import.meta.url);
+const read = (path) => readFile(new URL(path, root), 'utf8');
+const foundation = await read('supabase/migrations/20260907210000_central_registry_architecture_foundation.sql');
+const policy = await read('supabase/migrations/20260907220000_registry_v2_policy_and_invariants.sql');
+const config = await read('supabase/migrations/20260907220500_registry_v2_safe_configuration.sql');
+const reads = await read('supabase/migrations/20260907221000_registry_v2_scoped_api.sql');
+const approval = await read('supabase/migrations/20260907221500_registry_v2_registration_approval.sql');
+const sso = await read('supabase/migrations/20260907221600_registry_v2_sso.sql');
+const writes = await read('supabase/migrations/20260907222000_registry_v2_scoped_writes.sql');
+const prefect = await read('supabase/migrations/20260907222500_registry_v2_prefect_workflow.sql');
+const identity = await read('supabase/migrations/20260908153000_registry_v2_identity_consolidation.sql');
+const pages = await read('registry/pages.js');
+const signature = await read('api/registry-signature.js');
+const session = await read('api/registry-session.js');
+
+assert.match(foundation, /studentRows|798|preserve/i);
+assert.match(foundation, /ss3-business/);
+assert.match(foundation, /add column if not exists emergency_contact/);
+assert.match(policy, /school_registry_materialize_module_grants/);
+assert.match(policy, /PORTFOLIO_STAGE_NOT_ALLOWED/);
+assert.match(foundation, /school_portfolio_assignments[\s\S]*scope_type = 'class'/);
+assert.match(config, /school_registry_setting_json/);
+assert.match(config, /CLASS_STAGE_CONFIGURATION_INCOMPLETE/);
+assert.match(config, /INCOMPLETE_MAIN_TEACHER_ALLOCATIONS/);
+assert.match(config, /INCOMPLETE_SUBJECT_ALLOCATIONS/);
+assert.match(config, /jsonb_build_object\('target','ss3-business'\)/);
+assert.match(foundation, /from public\.result_subject_catalog r[\s\S]*r\.class_key = 'ss2-business'/);
+assert.match(reads, /guardians/);
+assert.match(reads, /school_registry_has_capability[\s\S]*set search_path to 'pg_catalog', 'extensions', 'public'/);
+assert.match(reads, /school_staff_subject_allocations/);
+assert.match(reads, /s\.active/);
+assert.doesNotMatch(reads, /result_subject_catalog s where s\.is_active/);
+assert.match(approval, /school_registry_approve_registration_v2/);
+assert.match(approval, /DUPLICATE_STAFF_IDENTITY/);
+assert.match(approval, /STAFF_DESIGNATION_TECHNICAL_PRIVILEGE_FORBIDDEN/);
+assert.match(sso, /central_registry/);
+assert.match(sso, /wts-central-registry\.vercel\.app\//);
+assert.match(sso, /v_client public\.school_sso_clients%rowtype/);
+assert.match(sso, /school_sync_person_admin_client/);
+assert.match(writes, /school_registry_sync_allocation_scope/);
+assert.match(writes, /school_registry_sync_class_teacher_role/);
+assert.match(writes, /ACTIVE_SUBJECT_NOT_FOUND/);
+assert.match(writes, /result_entry\.create/);
+assert.match(writes, /attendance_admin/);
+assert.match(writes, /PORTAL_ROLE_INVALID/);
+assert.match(writes, /REGISTRY_WRITE_FAILED/);
+assert.match(writes, /PREFECT_ACADEMIC_CONTEXT_MISMATCH/);
+assert.match(writes, /PREFECT_CYCLE_NOT_SELECTABLE/);
+assert.match(writes, /STAFF_ALREADY_MAIN_TEACHER/);
+assert.match(writes, /Promoted from assistant to main class teacher/);
+assert.match(writes, /PREFECT_WORKFLOW_REQUIRED/);
+assert.match(prefect, /PREFECT_BOOTSTRAP_DUPLICATE_APPOINTMENT/);
+assert.match(prefect, /PREFECT_OFFICE_REQUIRED/);
+assert.match(prefect, /class_key like 'ss3-%'/);
+assert.ok(prefect.indexOf('Validate the complete verified document') < prefect.indexOf("insert into public.school_portfolio_assignments"));
+assert.match(prefect, /appointment_status','ended/);
+assert.match(pages, /verified office\/post/);
+assert.match(pages, /prefectBootstrapAssignments/);
+assert.match(identity, /school_identity_consolidations/);
+assert.match(identity, /WTS\/STF\/000008/);
+assert.match(identity, /WTS\/STF\/000013/);
+assert.match(identity, /REDUNDANT_IDENTITY_HAS_ACTIVE_ALLOCATIONS/);
+assert.match(identity, /set pw_hash=null/);
+assert.match(identity, /revocation_reason=coalesce\(revocation_reason/);
+assert.doesNotMatch(identity, /delete\s+from/i);
+const app = await read('registry/app.js');
+assert.match(app, /type==='portfolio\.assignment\.end'\?'assignmentId':'allocationId'/);
+assert.match(signature, /ORIGIN_NOT_ALLOWED/);
+assert.match(signature, /SIGNATURE_PATH_INVALID/);
+assert.match(session, /publicSessionResult/);
+assert.match(session, /attendance_client_secret/);
+assert.doesNotMatch(session, /return send\(res, 200, \{\.\.\.result, context \}/);
+
+for (const path of ['api/registry-management.js', 'api/registry-records.js']) {
+  const source = await read(path);
+  assert.match(source, /statusCode\s*=\s*410/);
+  assert.match(source, /REGISTRY_LEGACY_ROUTE_RETIRED/);
+}
+
+const migrationSources = await Promise.all((await readdir(new URL('supabase/migrations/', root))).filter((name) => name.startsWith('20260907')).map((name) => read(`supabase/migrations/${name}`)));
+const allSql = migrationSources.join('\n');
+assert.doesNotMatch(allSql, /delete\s+from\s+public\.students/i);
+assert.doesNotMatch(allSql, /drop\s+table\s+public\.(students|school_people|staff_attendance_profiles)/i);
+
+console.log('Registry v2 readiness and security contract passed');

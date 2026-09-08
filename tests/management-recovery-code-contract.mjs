@@ -21,14 +21,13 @@ assert.doesNotMatch(migration, /recovery_code.*audit/i);
 
 assert.match(api, /complete_code/);
 assert.match(api, /school_identity_management_code_consume/);
-assert.match(managementApi, /identityWrite: 'school_identity_admin_write_session_api'/);
+assert.match(managementApi, /REGISTRY_LEGACY_ROUTE_RETIRED/);
+assert.match(managementApi, /\/api\/registry-v2/);
 assert.match(page, /Shared teacher access code/);
 assert.doesNotMatch(admin, /Issue activation code/);
 assert.doesNotMatch(admin, /Issue password-recovery code/);
 assert.match(admin, /Shared teacher access enabled/);
 assert.doesNotMatch(admin, /identityCodeReason|Reason for issuing this code/);
 assert.doesNotMatch(admin, /purpose, reason/);
-assert.match(managementApi, /Existing staff account activation/);
-assert.match(managementApi, /Staff password recovery/);
 
 console.log("Management recovery-code contract passed");

@@ -1,0 +1,147 @@
+{
+  "contractVersion": "2026-09-08.v2-pilot-hold",
+  "application": "central_registry",
+  "primaryNavigation": [
+    "dashboard",
+    "students",
+    "staff",
+    "allocations",
+    "portalAccess",
+    "calendar",
+    "portfolio"
+  ],
+  "nestedNavigation": {
+    "staff": ["registrations"]
+  },
+  "forbiddenPrimaryNavigation": ["registrations", "attendance", "results", "finance", "notifications"],
+  "preservation": {
+    "studentRows": 798,
+    "preservePermanentNumbers": true,
+    "preserveIdentityAccounts": true,
+    "preserveStaffRecords": true,
+    "preserveExplicitModuleGrants": true,
+    "preserveAllocations": true,
+    "preserveAcademicHistory": true,
+    "noDestructiveFoundationSql": true
+  },
+  "baselineCapabilities": [
+    "registry.enter",
+    "profile.self.read",
+    "profile.self.update",
+    "profile.signature.update",
+    "academic_calendar.read",
+    "portfolio.self.read"
+  ],
+  "portfolios": {
+    "developer": {"code": "developer", "studentScope": "school", "staffScope": "school", "protected": true, "presentation": "technical_only", "authoritySource": "institutional_authority"},
+    "proprietor": {"code": "proprietor", "studentScope": "school", "staffScope": "school", "protected": true},
+    "director": {"code": "director", "studentScope": "school", "staffScope": "school"},
+    "principal": {"code": "principal", "studentScope": "school", "staffScope": "school"},
+    "vice_principal": {"code": "vice_principal", "studentScope": "school", "staffScope": "school"},
+    "director_primary": {"code": "director_primary", "studentScope": "early_childhood_primary", "staffScope": "stage"},
+    "headmistress": {"code": "headmistress", "studentScope": "early_childhood", "staffScope": "stage"},
+    "assistant_headmistress": {"code": "assistant_headmistress", "studentScope": "early_childhood", "staffScope": "stage"},
+    "bursar": {"code": "bursar", "studentScope": "none", "staffScope": "self"},
+    "class_teacher": {"code": "class_teacher", "studentScope": "class", "staffScope": "self"},
+    "subject_teacher": {"code": "subject_teacher", "studentScope": "none", "staffScope": "self"},
+    "student_executive_council": {"code": "student_executive_council", "holderType": "student", "studentScope": "self", "staffScope": "none"}
+  },
+  "portalPolicies": {
+    "results": {"entry": "all_active_staff", "defaultRole": "staff", "operatingMode": "read_only", "holdWriteExemptions": ["proprietor", "developer", "system_owner"], "adminCapability": "portal.results.admin"},
+    "attendance": {"entry": "technical_account_only", "operatingMode": "pilot", "pilotScope": "SS2", "protectedFeatures": ["setup", "qr_generation"]},
+    "notifications": {"entry": "none", "operatingMode": "disabled"},
+    "finance": {"entry": "none", "operatingMode": "disabled"},
+    "staff_self_service": {"entry": "all_active_staff"}
+  },
+  "protectedCapabilities": [
+    "portal_access.manage",
+    "portal.operating_mode.manage",
+    "allocations.school.manage",
+    "portfolio.manage",
+    "academic_calendar.manage",
+    "portal.results.admin",
+    "attendance.setup",
+    "attendance.qr_generation"
+  ],
+  "technicalPrivilegePresentation": {
+    "schoolFacingPortfolio": false,
+    "visibleDesignation": false,
+    "authorizationSource": "institutional_authority",
+    "auditVisible": true
+  },
+  "allocationModel": {
+    "mainClassTeacherPerSessionTermClass": 1,
+    "assistantClassTeachersPerSessionTermClass": "multiple",
+    "subjectAllocations": true,
+    "replacementStrategy": "end_then_insert",
+    "historyPreserved": true
+  },
+  "currentPrefectBootstrap": {
+    "studentPopulation": "verified_notice_students_normally_active_ss3_with_documented_ss2_exceptions",
+    "verifiedOfficeRequired": true,
+    "academicSessionRequired": true,
+    "atomicImport": true,
+    "fabricatedAppointmentsAllowed": false,
+    "officialNoticeDate": "2026-06-15",
+    "academicSession": "2026/2027",
+    "verifiedStudents": 25,
+    "verifiedAppointments": 35,
+    "multipleOfficesPerStudent": true
+  },
+  "migrationLedger": {
+    "verifiedProductionHead": "20260906235417",
+    "pendingOrder": [
+      "20260907210000_central_registry_architecture_foundation.sql",
+      "20260907220000_registry_v2_policy_and_invariants.sql",
+      "20260907220500_registry_v2_safe_configuration.sql",
+      "20260907221000_registry_v2_scoped_api.sql",
+      "20260907221500_registry_v2_registration_approval.sql",
+      "20260907221600_registry_v2_sso.sql",
+      "20260907222000_registry_v2_scoped_writes.sql",
+      "20260907222500_registry_v2_prefect_workflow.sql",
+      "20260907223000_registry_v2_transition_readiness.sql",
+      "20260907224000_registry_v2_signature_storage.sql",
+      "20260908153000_registry_v2_identity_consolidation.sql",
+      "20260908170000_portal_pilot_and_result_hold.sql",
+      "20260908234000_verified_2026_2027_prefect_appointments.sql"
+    ],
+    "productionApplied": false
+  },
+  "stableErrorCodes": [
+    "REGISTRY_SESSION_REQUIRED",
+    "REGISTRY_IDENTITY_NOT_ACTIVE",
+    "REGISTRY_CAPABILITY_DENIED",
+    "REGISTRY_SCOPE_DENIED",
+    "TARGET_CLASS_OUT_OF_SCOPE",
+    "ACTIVE_MAIN_TEACHER_REQUIRED",
+    "STAFF_ALREADY_MAIN_TEACHER",
+    "PROTECTED_PORTFOLIO_RESTRICTED",
+    "TECHNICAL_PRIVILEGE_NOT_ASSIGNABLE_AS_PORTFOLIO",
+    "STAFF_DESIGNATION_TECHNICAL_PRIVILEGE_FORBIDDEN",
+    "PREFECT_CANDIDATE_NOT_SS2",
+    "PREFECT_OFFICE_REQUIRED",
+    "SS2_BUSINESS_PROMOTION_TARGET_REQUIRED"
+  ],
+  "acceptanceCriteria": [
+    "all_active_staff_entry",
+    "seven_item_actor_specific_navigation",
+    "subject_only_no_student_data",
+    "class_teacher_allocated_class_only",
+    "early_childhood_leadership_scope",
+    "director_primary_scope",
+    "schoolwide_management_scope",
+    "protected_controls",
+    "results_staff_default_and_admin_gate",
+    "attendance_developer_only_pilot",
+    "notifications_disabled",
+    "self_profile_and_signature",
+    "normalized_classes_and_ss3_business",
+    "one_main_multiple_assistants",
+    "class_subject_staff_allocation_order",
+    "historical_portfolios",
+    "annual_prefect_workflow",
+    "preserve_798_students",
+    "backend_scope_enforcement",
+    "database_api_browser_security_regression_tests"
+  ]
+}

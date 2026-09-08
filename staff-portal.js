@@ -153,7 +153,7 @@
   }
 
   function renderPortals(portals = []) {
-    const activePortals = portals.filter((portal) => portal.grant_status === "active" && portal.app_code !== "staff_self_service");
+    const activePortals = portals.filter((portal) => portal.grant_status === "active" && portal.entry_allowed !== false && portal.app_code !== "staff_self_service");
     if (!activePortals.length) {
       $("#staffPortalCards").innerHTML = `<div class="staff-access-empty"><span class="staff-access-empty-icon" aria-hidden="true">✓</span><strong>No specialist service is assigned yet.</strong><p>Your Workspace is active. When management grants another WTS service, it will appear here automatically.</p></div>`;
       return;
