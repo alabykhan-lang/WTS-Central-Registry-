@@ -10,6 +10,8 @@
       FULL_NAME_REQUIRED: 'Enter your full name.',
       VALID_EMAIL_REQUIRED: 'Enter a valid email address.',
       PHONE_REQUIRED: 'Enter a phone number.',
+      PASSWORD_REQUIREMENTS_NOT_MET: 'Use at least 10 characters with uppercase, lowercase and a number.',
+      PASSWORD_CONFIRMATION_REQUIRED: 'The passwords do not match.',
       PHOTOGRAPH_INVALID: 'Choose a smaller photograph.',
       WHATSAPP_NUMBER_INVALID: 'Check the WhatsApp number.',
       STAFF_REGISTRATION_ALREADY_ON_FILE: 'A registration or staff identity is already on file for these contact details. Do not register again.',
@@ -80,6 +82,7 @@
     $('#registrationError').textContent = 'Submitting securely…';
     try {
       const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+      if (values.password !== values.confirmPassword) throw Object.assign(new Error(message('PASSWORD_CONFIRMATION_REQUIRED')), { code: 'PASSWORD_CONFIRMATION_REQUIRED' });
       const response = await fetch('/api/staff-registration', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
