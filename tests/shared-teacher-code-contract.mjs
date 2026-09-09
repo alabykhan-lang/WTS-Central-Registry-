@@ -17,6 +17,7 @@ const client = await readFile(
   new URL("../account-recovery.js", import.meta.url),
   "utf8",
 );
+const retired = await readFile(new URL("../supabase/migrations/20260909060000_direct_staff_password_access.sql", import.meta.url), "utf8");
 
 assert.match(migration, /school_identity_shared_teacher_code_consume/);
 assert.match(migration, /v_shared_code_hash constant text := '[a-f0-9]{64}'/);
@@ -30,11 +31,10 @@ assert.match(migration, /shared_teacher_password_reset_completed/);
 assert.match(migration, /raw_code_stored', false/);
 assert.match(migration, /grant execute.*to anon/s);
 
-assert.match(api, /consumeSharedTeacherCode/);
-assert.match(api, /school_identity_shared_teacher_code_consume/);
-assert.match(api, /consumeManagementCode/);
-assert.match(page, /Shared teacher access code/);
-assert.match(client, /SHARED_TEACHER_CODE_INVALID/);
-assert.match(client, /shared WTS teacher access code/);
+assert.doesNotMatch(api, /consumeSharedTeacherCode|school_identity_shared_teacher_code_consume|consumeManagementCode/);
+assert.doesNotMatch(page, /teacher access code|activation key/i);
+assert.doesNotMatch(client, /SHARED_TEACHER_CODE_INVALID|teacher access code|activation key/i);
+assert.match(retired, /school_identity_shared_teacher_code_consume/);
+assert.match(retired, /revoke execute on function %s from public, anon, authenticated/);
 
 console.log("Shared teacher recovery-code contract passed");
