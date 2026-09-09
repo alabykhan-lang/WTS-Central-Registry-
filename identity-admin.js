@@ -42,9 +42,9 @@
 
   function codeCard(current) {
     return `<section class="identity-code-panel">
-      <div class="identity-code-heading"><div><p class="panelEyebrow">TEACHER SELF-SERVICE</p><h3>Shared teacher access enabled</h3></div><span class="badge active">NO ISSUANCE NEEDED</span></div>
-      <p>${esc(current.full_name)} can use their Staff Number and the school’s shared teacher access code on the activation or password-reset page. Management does not need to generate an individual code.</p>
-      <small class="accessMeta">Every successful activation or password reset is recorded against the individual teacher account.</small>
+      <div class="identity-code-heading"><div><p class="panelEyebrow">STAFF SELF-SERVICE</p><h3>Direct password access enabled</h3></div><span class="badge active">NO KEY NEEDED</span></div>
+      <p>${esc(current.full_name)} can sign in directly after setting a password with their Staff Number and registered phone number.</p>
+      <small class="accessMeta">Every successful password setup or reset is recorded against the individual staff account.</small>
     </section>`;
   }
 
