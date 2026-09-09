@@ -1,7 +1,7 @@
 'use strict';
 
 const SUPABASE_URL = process.env.WTS_SUPABASE_URL || 'https://wuftzyeajmsxdrbwaawl.supabase.co';
-const SUPABASE_KEY = process.env.WTS_SUPABASE_SERVER_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.WTS_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_KEY = process.env.WTS_SUPABASE_SERVER_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.WTS_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZnR6eWVham1zeGRyYndhYXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjczNTgsImV4cCI6MjA4OTQ0MzM1OH0.QUeDRP1IpHCjvecqAOEZAqmMalEFlCLXylZP5D5iLog';
 const COOKIE_NAME = 'wts_registry_session';
 const ORIGINS = new Set(['https://wts-central-registry.vercel.app']);
 
