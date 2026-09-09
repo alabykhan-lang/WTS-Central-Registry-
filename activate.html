@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f3a">
-  <title>WTS Existing Staff Access</title>
+  <title>WTS Password Reset</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/account-recovery.css">
 </head>
@@ -13,25 +13,21 @@
     <div class="registration-brand"><div class="auth-logo">WTS</div><small>WAY TO SUCCESS STANDARD SCHOOLS, EJIGBO</small></div>
     <section class="recovery-card">
       <div class="recovery-heading">
-        <span class="recovery-kicker" id="recoveryKicker">EXISTING STAFF</span>
-        <h1 id="recoveryTitle">Activate your existing account</h1>
-        <p id="recoveryIntro">Use the shared WTS teacher access code with your Staff Number. Email and management code issuance are not required.</p>
-      </div>
-      <div class="recovery-switch" role="tablist" aria-label="Account access options">
-        <a id="activationModeLink" href="/activate.html?mode=activation">Activate account</a>
-        <a id="resetModeLink" href="/activate.html?mode=reset">Forgot password</a>
+        <span class="recovery-kicker">STAFF PASSWORD</span>
+        <h1>Set or reset your password</h1>
+        <p>Use your Staff Number and the email or phone number already recorded in the Registry. No separate code or email confirmation is required.</p>
       </div>
       <div class="code-help">
         <strong>How to use this page</strong>
-        <span>Enter your Staff Number and the shared teacher access code supplied by the school, then choose your new password.</span>
+        <span>Your Staff Number and registered email or phone must match the active staff record.</span>
       </div>
       <form id="recoveryCodeForm" class="recovery-form">
         <label>Staff Number<input id="recoveryLogin" autocomplete="username" required maxlength="254" placeholder="WTS/STF/000001"></label>
-        <label>Shared teacher access code<input id="recoveryCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required maxlength="32" placeholder="WTS-XXXXXXXXXXXXXXXX"></label>
+        <label>Registered email or phone<input id="recoveryContact" autocomplete="email" required maxlength="254"></label>
         <label class="password-field">New password<div class="password-input-wrap"><input id="recoveryPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="512"><button type="button" class="password-toggle" data-password-toggle="recoveryPassword">Show password</button></div></label>
         <label class="password-field">Confirm password<div class="password-input-wrap"><input id="recoveryPasswordConfirm" type="password" autocomplete="new-password" required minlength="10" maxlength="512"><button type="button" class="password-toggle" data-password-toggle="recoveryPasswordConfirm">Show password</button></div></label>
         <p class="form-help">Use at least 10 characters with an uppercase letter, lowercase letter and number.</p>
-        <button class="primary full" type="submit" id="recoveryCodeButton">Activate account</button>
+        <button class="primary full" type="submit" id="recoveryCodeButton">Save password</button>
       </form>
       <div class="recovery-status" id="recoveryStatus" role="status" aria-live="polite"></div>
       <div class="recovery-links"><a href="/staff">Open School Portal sign-in</a><a href="/">Central Registry management sign-in</a></div>
