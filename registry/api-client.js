@@ -27,3 +27,10 @@ export async function uploadSignature(dataUrl, requestId) {
   if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || 'SIGNATURE_UPLOAD_FAILED'), { code: result?.code, status: response.status });
   return result;
 }
+
+export async function uploadPhoto(targetType, targetId, dataUrl, requestId) {
+  const response = await fetch('/api/registry-photo', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ targetType, targetId, dataUrl, requestId }) });
+  const result = await response.json().catch(() => ({ ok: false, code: 'PHOTO_INVALID_RESPONSE' }));
+  if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || 'PHOTO_UPLOAD_FAILED'), { code: result?.code, status: response.status });
+  return result;
+}
