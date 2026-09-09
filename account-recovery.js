@@ -2,107 +2,39 @@
 
 (() => {
   const $ = (selector) => document.querySelector(selector);
-  const params = new URLSearchParams(window.location.search);
-  const mode = params.get('mode') === 'reset' ? 'reset' : 'activation';
-  const isReset = mode === 'reset';
-  const token = params.get('token') || '';
-  const tokenFlow = Boolean(token);
-
-  function setStatus(message, type = '') {
-    const node = $('#recoveryStatus');
-    node.textContent = message;
-    node.className = `recovery-status ${type}`;
-  }
-
+  function setStatus(message, type = '') { const node = $('#recoveryStatus'); node.textContent = message; node.className = `recovery-status ${type}`; }
   function friendly(code) {
     return ({
-      MANAGEMENT_CODE_INPUT_REQUIRED: 'Enter your Staff Number, teacher access code and matching passwords.',
-      MANAGEMENT_CODE_INVALID: 'The Staff Number or teacher access code is invalid.',
-      SHARED_TEACHER_CODE_INVALID: 'The Staff Number or shared teacher access code is invalid.',
-      SHARED_TEACHER_RECOVERY_FAILED: 'The teacher account could not be updated. Please contact Registry management.',
-      ACCOUNT_NOT_ACTIVE: 'This staff identity is not active. Contact Registry management.',
+      PASSWORD_RESET_INPUT_REQUIRED: 'Enter your Staff Number, registered email or phone and matching passwords.',
+      STAFF_RECORD_VERIFICATION_FAILED: 'The Staff Number and registered email or phone do not match an active staff record.',
+      ACCOUNT_TEMPORARILY_LOCKED: 'Password access is temporarily locked. Please wait 15 minutes and try again.',
       PASSWORD_REQUIREMENTS_NOT_MET: 'Use at least 10 characters with uppercase, lowercase and a number.',
-      MANAGEMENT_CODE_COMPLETION_FAILED: 'The teacher account could not be updated. Please contact Registry management.',
-      RECOVERY_TOKEN_INVALID: 'This secure link is invalid. Request a new one.',
-      RECOVERY_TOKEN_EXPIRED: 'This secure link has expired. Request a new one.',
-      RECOVERY_TOKEN_USED: 'This secure link has already been used. Request a new one.',
-      RECOVERY_COMPLETION_FAILED: 'The secure account update could not be completed. Please request a new link.',
+      PASSWORD_RESET_FAILED: 'The password could not be saved. Please contact Registry management.',
     })[code] || String(code || 'Request failed.').replaceAll('_', ' ');
   }
-
-  async function completeAccess(event) {
+  async function savePassword(event) {
     event.preventDefault();
-    const form = event.currentTarget;
     const button = $('#recoveryCodeButton');
     const password = $('#recoveryPassword').value;
     const confirmPassword = $('#recoveryPasswordConfirm').value;
     if (password !== confirmPassword) return setStatus('The passwords do not match.', 'error');
     button.disabled = true;
-    setStatus('Checking the teacher access code and saving your password…');
+    setStatus('Verifying your staff record and saving your password…');
     try {
       const response = await fetch('/api/account-recovery', {
-        method: 'POST',
-        credentials: 'same-origin',
+        method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(tokenFlow ? {
-          action: 'complete',
-          token,
-          password,
-          confirmPassword,
-        } : {
-          action: 'complete_code',
-          purpose: isReset ? 'password_reset' : 'activation',
-          login: $('#recoveryLogin').value.trim(),
-          code: $('#recoveryCode').value.trim(),
-          password,
-          confirmPassword,
-        }),
+        body: JSON.stringify({ action: 'reset', login: $('#recoveryLogin').value.trim(), contact: $('#recoveryContact').value.trim(), password, confirmPassword }),
       });
-      const result = await response.json().catch(() => ({ ok: false, code: tokenFlow ? 'RECOVERY_COMPLETION_FAILED' : 'MANAGEMENT_CODE_COMPLETION_FAILED' }));
-      if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || (tokenFlow ? 'RECOVERY_COMPLETION_FAILED' : 'MANAGEMENT_CODE_COMPLETION_FAILED')), { code: result?.code });
-      form.hidden = true;
-      setStatus(isReset
-        ? 'Password reset complete. You can now sign in to the School Portal.'
-        : 'Account activated. You can now sign in to the School Portal.', 'success');
-    } catch (error) {
-      setStatus(friendly(error.code || error.message), 'error');
-    } finally {
-      button.disabled = false;
-    }
+      const result = await response.json().catch(() => ({ ok: false, code: 'PASSWORD_RESET_FAILED' }));
+      if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || 'PASSWORD_RESET_FAILED'), { code: result?.code });
+      event.currentTarget.hidden = true;
+      setStatus('Password saved. You can now sign in directly with your Staff Number or email.', 'success');
+    } catch (error) { setStatus(friendly(error.code || error.message), 'error'); }
+    finally { button.disabled = false; }
   }
-
-  function configure() {
-    $('#recoveryTitle').textContent = isReset ? 'Reset your School Portal password' : 'Activate your existing School Portal account';
-    $('#recoveryKicker').textContent = isReset ? 'PASSWORD RECOVERY' : 'EXISTING STAFF';
-    $('#recoveryIntro').textContent = tokenFlow
-      ? 'This secure link can be used once and expires shortly. Choose a new password to continue.'
-      : isReset
-        ? 'Use the shared WTS teacher access code with your Staff Number to choose a new password.'
-        : 'Use the shared WTS teacher access code with your Staff Number to activate your account.';
-    $('#recoveryCodeButton').textContent = isReset ? 'Reset password' : 'Activate account';
-    $('#activationModeLink').classList.toggle('active', !isReset);
-    $('#resetModeLink').classList.toggle('active', isReset);
-    if (tokenFlow) {
-      const codeHelp = document.querySelector('.code-help');
-      if (codeHelp) codeHelp.hidden = true;
-      ['#recoveryLogin', '#recoveryCode'].forEach((selector) => {
-        const input = $(selector);
-        input.required = false;
-        input.disabled = true;
-        const label = input.closest('label');
-        if (label) label.hidden = true;
-      });
-    }
-    document.querySelectorAll('[data-password-toggle]').forEach((button) => {
-      button.onclick = () => {
-        const input = document.getElementById(button.dataset.passwordToggle);
-        const visible = input.type === 'text';
-        input.type = visible ? 'password' : 'text';
-        button.textContent = visible ? 'Show password' : 'Hide password';
-      };
-    });
-  }
-
-  configure();
-  $('#recoveryCodeForm').onsubmit = completeAccess;
+  document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    button.onclick = () => { const input = document.getElementById(button.dataset.passwordToggle); const visible = input.type === 'text'; input.type = visible ? 'password' : 'text'; button.textContent = visible ? 'Show password' : 'Hide password'; };
+  });
+  $('#recoveryCodeForm').onsubmit = savePassword;
 })();
