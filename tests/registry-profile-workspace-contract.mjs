@@ -9,8 +9,8 @@ const [html, app, pages, client, endpoint, business, profileSql] = await Promise
   read('registry/pages.js'),
   read('registry/api-client.js'),
   read('api/registry-profile.js'),
-  read('supabase/migrations/20260910100000_registry_business_and_departments.sql'),
-  read('supabase/migrations/20260910101000_registry_profile_tools.sql'),
+  read('supabase/migrations/20260910085618_registry_business_and_departments.sql'),
+  read('supabase/migrations/20260910085719_registry_profile_tools.sql'),
 ]);
 
 assert.deepEqual(
@@ -20,6 +20,8 @@ assert.deepEqual(
 assert.doesNotMatch(html, /data-page="portalAccess"|data-page="portfolio"|data-route="portalAccess"|data-route="portfolio"/);
 assert.doesNotMatch(app, /loadPortalAccess|loadPortfolio|selectedPersonId/);
 assert.doesNotMatch(pages, /loadPortalAccess|loadPortfolio|data-portfolio-tab|portfolioRows/);
+assert.doesNotMatch(html, /dashboardClasses|Classes you can open/);
+assert.doesNotMatch(pages, /dashboardClasses|classCards|Open class/);
 assert.match(html, /id="profileDialog"/);
 assert.match(app, /profileDepartmentForm/);
 assert.match(app, /profileCustomPortfolioForm/);

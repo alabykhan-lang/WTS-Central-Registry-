@@ -13,8 +13,8 @@ const writes = await read('supabase/migrations/20260907222000_registry_v2_scoped
 const prefect = await read('supabase/migrations/20260907222500_registry_v2_prefect_workflow.sql');
 const identity = await read('supabase/migrations/20260908153000_registry_v2_identity_consolidation.sql');
 const pilot = await read('supabase/migrations/20260908170000_portal_pilot_and_result_hold.sql');
-const business = await read('supabase/migrations/20260910100000_registry_business_and_departments.sql');
-const profiles = await read('supabase/migrations/20260910101000_registry_profile_tools.sql');
+const business = await read('supabase/migrations/20260910085618_registry_business_and_departments.sql');
+const profiles = await read('supabase/migrations/20260910085719_registry_profile_tools.sql');
 const pages = await read('registry/pages.js');
 const html = await read('index.html');
 
@@ -93,7 +93,9 @@ assert.doesNotMatch(pilot, /delete\s+from/i);
 const names = (await readdir(new URL('supabase/migrations/', root))).filter((name) => name.endsWith('.sql')).sort();
 assert.deepEqual(contract.migrationLedger.pendingOrder, [...contract.migrationLedger.pendingOrder].sort());
 assert.equal(new Set(contract.migrationLedger.pendingOrder).size, contract.migrationLedger.pendingOrder.length);
-assert.equal(contract.migrationLedger.productionApplied, false);
+assert.equal(contract.migrationLedger.productionApplied, true);
+assert.equal(contract.migrationLedger.productionAppliedVersions.registry_business_and_departments, '20260910085618');
+assert.equal(contract.migrationLedger.productionAppliedVersions.registry_profile_tools, '20260910085719');
 for (const migration of contract.migrationLedger.pendingOrder) {
   assert.ok(names.includes(migration), `missing pending migration: ${migration}`);
   assert.ok(migration.slice(0, 14) > contract.migrationLedger.verifiedProductionHead, `pending migration is not after production head: ${migration}`);

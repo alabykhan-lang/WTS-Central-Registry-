@@ -68,21 +68,6 @@ export async function loadDashboard() {
     node.append(label, value);
     metrics?.append(node);
   });
-  const classes = clear('#dashboardClasses');
-  const classCards = data.classCards || [];
-  if (!classCards.length) empty(classes, data.message || 'No class allocation is currently assigned.');
-  classCards.forEach((item) => {
-    const card = document.createElement('article');
-    card.className = 'class-scope-tile';
-    card.innerHTML = `<span>${esc(item.label || labelClass(item.classKey))}</span><strong>${esc(item.total ?? 0)}</strong><small>${esc(item.female ?? 0)} female · ${esc(item.male ?? 0)} male</small>`;
-    const open = document.createElement('button');
-    open.className = 'ghost';
-    open.type = 'button';
-    open.textContent = 'Open class';
-    open.onclick = () => window.RegistryApp.openStudentClass(item.classKey);
-    card.append(open);
-    classes?.append(card);
-  });
 }
 
 export async function loadStudents() {
