@@ -21,7 +21,7 @@ assert.equal(contract.acceptanceCriteria.length, 20);
 
 const evidence = new Map([
   ['all_active_staff_entry', /\('central_registry','all_active_staff','staff',true\)/.test(v2Sql) && /REGISTRY_ACCESS_NOT_GRANTED/.test(v2Sql)],
-  ['seven_item_actor_specific_navigation', primaryRoutes.length === 7 && /configureNav\(\)/.test(app)],
+  ['seven_item_actor_specific_navigation', primaryRoutes.length === contract.primaryNavigation.length && /configureNav\(\)/.test(app)],
   ['subject_only_no_student_data', /\('subject_teacher','allocations\.read'\)/.test(v2Sql) && !/\('subject_teacher','students\./.test(v2Sql)],
   ['class_teacher_allocated_class_only', /students\.class\.read/.test(v2Sql) && /classScopes/.test(v2Sql) && /s\.class_key in/.test(v2Sql)],
   ['early_childhood_leadership_scope', /\('headmistress','early_childhood'\)/.test(v2Sql) && /allocations\.early_childhood\.manage/.test(v2Sql)],
@@ -32,7 +32,7 @@ const evidence = new Map([
   ['attendance_developer_only_pilot', /\('attendance','configured_only','attendance_admin',false\)/.test(v2Sql) && /school_registry_is_technical_actor/.test(allSql) && /ATTENDANCE_PILOT_RESTRICTED/.test(allSql)],
   ['notifications_disabled', /\('notifications','configured_only','staff',false\)/.test(v2Sql) && /\('notifications','disabled'/.test(v2Sql) && /NOTIFICATIONS_DISABLED/.test(allSql)],
   ['self_profile_and_signature', /profile\.self\.update/.test(v2Sql) && /profile\.signature\.update/.test(v2Sql) && /validImageBuffer/.test(signature)],
-  ['normalized_classes_and_ss3_business', /stage_code/.test(v2Sql) && /'ss3-business'/.test(v2Sql) && /jsonb_build_object\('target','ss3-business'\)/.test(v2Sql)],
+  ['normalized_classes_and_ss3_business', /stage_code/.test(v2Sql) && /'ss3-business'/.test(allSql) && /jsonb_build_object\('target','ss3-business'\)/.test(allSql)],
   ['one_main_multiple_assistants', /school_class_allocations_one_main_teacher_idx/.test(allSql) && /assistant_class_teacher/.test(v2Sql) && /STAFF_ALREADY_MAIN_TEACHER/.test(v2Sql)],
   ['class_subject_staff_allocation_order', html.indexOf('id="subjectClass"') < html.indexOf('id="subjectChoices"') && html.indexOf('id="subjectChoices"') < html.indexOf('id="subjectStaff"')],
   ['historical_portfolios', /assignment_status text not null default 'active'/.test(v2Sql) && /effective_until/.test(v2Sql) && /portfolio\.assignment_ended/.test(v2Sql)],

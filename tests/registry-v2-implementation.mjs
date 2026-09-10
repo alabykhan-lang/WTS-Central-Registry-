@@ -9,13 +9,15 @@ const files = {
   api: await readFile(new URL('api/registry-v2.js', root), 'utf8'),
   signature: await readFile(new URL('api/registry-signature.js', root), 'utf8'),
 };
-const migrations = (await readdir(new URL('supabase/migrations/', root))).filter((name) => name.startsWith('20260907')).sort();
+const migrations = (await readdir(new URL('supabase/migrations/', root))).filter((name) => name.startsWith('20260907') || name.startsWith('20260908') || name.startsWith('20260910')).sort();
 const sql = await Promise.all(migrations.map((name) => readFile(new URL(`supabase/migrations/${name}`, root), 'utf8')));
 const allSql = sql.join('\n');
 
-assert.deepEqual([...files.html.matchAll(/data-route="([^"]+)"/g)].map((m) => m[1]).filter((value, index, array) => array.indexOf(value) === index), ['dashboard','students','staff','registrations','allocations','portalAccess','calendar','portfolio']);
+assert.deepEqual([...files.html.matchAll(/data-route="([^"]+)"/g)].map((m) => m[1]).filter((value, index, array) => array.indexOf(value) === index), ['dashboard','students','staff','registrations','allocations','calendar']);
 assert.match(files.html, /Staff [Rr]egistrations/);
 assert.doesNotMatch(files.html, /<button[^>]+data-route="registrations"[^>]+class="nav"/);
+assert.doesNotMatch(files.html, /data-route="portalAccess"|data-page="portalAccess"|data-route="portfolio"|data-page="portfolio"/);
+assert.match(files.html, /id="profileDialog"/);
 assert.match(files.session, /school_registry_login_v2/);
 assert.match(files.api, /school_registry_read_v2/);
 assert.match(files.api, /school_registry_write_v2/);

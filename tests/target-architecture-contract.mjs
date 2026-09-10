@@ -6,9 +6,12 @@ const contract = JSON.parse(await readFile(new URL("docs/CENTRAL-REGISTRY-ARCHIT
 const html = await readFile(new URL("index.html", root), "utf8");
 const foundation = await readFile(new URL("supabase/migrations/20260907210000_central_registry_architecture_foundation.sql", root), "utf8").catch(() => "");
 
-assert.deepEqual(contract.primaryNavigation, ["dashboard", "students", "staff", "allocations", "portalAccess", "calendar", "portfolio"]);
+assert.deepEqual(contract.primaryNavigation, ["dashboard", "students", "staff", "allocations", "calendar"]);
 assert.ok(!contract.primaryNavigation.includes("registrations"));
-assert.match(html, /data-view="portfolio"/);
+assert.ok(contract.removedRegistrySurfaces.includes("portalAccess"));
+assert.ok(contract.removedRegistrySurfaces.includes("portfolio"));
+assert.doesNotMatch(html, /data-route="portalAccess"|data-page="portalAccess"|data-route="portfolio"|data-page="portfolio"/);
+assert.match(html, /id="profileDialog"/);
 assert.doesNotMatch(html, /data-view="registration"/);
 assert.match(html, /Registrations/);
 assert.ok(contract.acceptanceCriteria.length === 20);

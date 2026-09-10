@@ -1,19 +1,31 @@
 {
-  "contractVersion": "2026-09-08.v2-pilot-hold",
+  "contractVersion": "2026-09-10.v2-profile-workspace",
   "application": "central_registry",
   "primaryNavigation": [
     "dashboard",
     "students",
     "staff",
     "allocations",
-    "portalAccess",
-    "calendar",
-    "portfolio"
+    "calendar"
   ],
   "nestedNavigation": {
     "staff": ["registrations"]
   },
-  "forbiddenPrimaryNavigation": ["registrations", "attendance", "results", "finance", "notifications"],
+  "forbiddenPrimaryNavigation": ["registrations", "attendance", "results", "finance", "notifications", "portalAccess", "portfolio"],
+  "removedRegistrySurfaces": ["portalAccess", "portfolio"],
+  "profileWorkspace": {
+    "studentCustomPortfolios": "senior_secondary_only",
+    "staffCustomPortfolios": "management_only",
+    "departmentToggle": "ss2_ss3_verified_streams",
+    "portfolioAssignmentVisibility": "profile_action_only",
+    "technicalPrivilegePresentation": "technical_only"
+  },
+  "responsibilityPrinting": {
+    "format": "branded_tables",
+    "classRows": ["class_teacher", "assistant_class_teacher"],
+    "subjectRows": ["subject", "assigned_teacher"],
+    "omitUnassignedAssistant": true
+  },
   "preservation": {
     "studentRows": 798,
     "preservePermanentNumbers": true,
@@ -103,7 +115,9 @@
       "20260907224000_registry_v2_signature_storage.sql",
       "20260908153000_registry_v2_identity_consolidation.sql",
       "20260908170000_portal_pilot_and_result_hold.sql",
-      "20260908234000_verified_2026_2027_prefect_appointments.sql"
+      "20260908234000_verified_2026_2027_prefect_appointments.sql",
+      "20260910100000_registry_business_and_departments.sql",
+      "20260910101000_registry_profile_tools.sql"
     ],
     "productionApplied": false
   },
@@ -120,7 +134,11 @@
     "STAFF_DESIGNATION_TECHNICAL_PRIVILEGE_FORBIDDEN",
     "PREFECT_CANDIDATE_NOT_SS2",
     "PREFECT_OFFICE_REQUIRED",
-    "SS2_BUSINESS_PROMOTION_TARGET_REQUIRED"
+    "SS2_BUSINESS_PROMOTION_TARGET_REQUIRED",
+    "DEPARTMENT_INVALID",
+    "DEPARTMENT_CLASS_NOT_CONFIGURED",
+    "PORTFOLIO_SENIOR_SECONDARY_ONLY",
+    "PROFILE_CONFLICT"
   ],
   "acceptanceCriteria": [
     "all_active_staff_entry",

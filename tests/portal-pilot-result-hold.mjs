@@ -40,8 +40,8 @@ assert.match(writes,/portal\.operating_mode\.updated/);
 assert.match(writes,/school_portal_entry_allowed\(v_person_id,v_app\)/);
 assert.match(staffPortal,/portal\.entry_allowed !== false/);
 assert.match(enforcement,/client_id='notifications'/);
-assert.match(html,/id="resultsOperatingForm"/);
-assert.match(pages,/Resume result recording/);
-assert.match(app,/portal\.operating_mode\.set/);
+assert.doesNotMatch(html,/id="resultsOperatingForm"|data-route="portalAccess"|data-page="portalAccess"/);
+assert.doesNotMatch(pages,/Resume result recording|loadPortalAccess/);
+assert.doesNotMatch(app,/portal\.operating_mode\.set|loadPortalAccess/);
 
 console.log('Portal pilot and Results hold policy contract passed');

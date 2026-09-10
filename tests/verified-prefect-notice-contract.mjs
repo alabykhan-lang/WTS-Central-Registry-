@@ -24,6 +24,6 @@ assert.match(workflow,/PREFECT_BOOTSTRAP_DUPLICATE_APPOINTMENT/);
 assert.match(workflow,/lower\(trim\(coalesce\(a\.office_name,''\)\)\)=lower\(v_office\)/);
 assert.match(multiOffice,/new\.portfolio_code <> 'student_executive_council'/);
 assert.match(multiOffice,/lower\(trim\(coalesce\(a\.office_name,''\)\)\) = lower\(trim\(coalesce\(new\.office_name,''\)\)\)/);
-assert.match(pages,/That exact student appointment is already in the verified list/);
+assert.doesNotMatch(pages,/That exact student appointment is already in the verified list|prefectBootstrapAssignments/);
 
 console.log('Verified 2026/2027 prefect notice contract passed');

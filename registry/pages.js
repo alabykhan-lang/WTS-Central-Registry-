@@ -2,144 +2,352 @@
 
 import { registryRequest } from './api-client.js';
 import { state, hasCapability } from './state.js';
-import { $, $$, esc, labelClass, formatDate, requestId, toast, setText } from './format.js';
+import { $, esc, labelClass, formatDate, setText } from './format.js';
 
-async function read(action, payload = {}) { const key = `${action}:${JSON.stringify(payload)}`; if (state.cache.has(key)) return state.cache.get(key); const result = await registryRequest('read', action, payload); state.cache.set(key, result); return result; }
-let portfolioCatalog=[];
-let prefectBootstrapAssignments=[];
-let allocationSnapshot=null;
-let portfolioSnapshot=null;
-let portfolioTab='staff';
-let portfolioRevealed=false;
-function clear(selector) { const node=$(selector); if (node) node.replaceChildren(); return node; }
-function empty(node, message) { if (node) { node.textContent=message; node.hidden=false; } }
-function row(text, detail, actions = []) { const node=document.createElement('div'); node.className='stack-row'; const main=document.createElement('div'); const strong=document.createElement('strong'); strong.textContent=text; const small=document.createElement('small'); small.textContent=detail || ''; main.append(strong,small); node.append(main); if (actions.length) { const buttons=document.createElement('div'); buttons.className='row-actions'; actions.forEach((button)=>buttons.append(button)); node.append(buttons); } return node; }
-function avatar(src,name){const img=document.createElement('img');img.className='directory-avatar';img.src=src||'/public-school-logo.webp';img.alt=name?`${name} picture`:'Profile picture';img.onerror=()=>{img.src='/public-school-logo.webp';};return img;}
+async function read(action, payload = {}) {
+  const key = `${action}:${JSON.stringify(payload)}`;
+  if (state.cache.has(key)) return state.cache.get(key);
+  const result = await registryRequest('read', action, payload);
+  state.cache.set(key, result);
+  return result;
+}
+
+let allocationSnapshot = null;
+
+function clear(selector) {
+  const node = $(selector);
+  if (node) node.replaceChildren();
+  return node;
+}
+
+function empty(node, message) {
+  if (node) {
+    node.textContent = message;
+    node.hidden = false;
+  }
+}
+
+function row(text, detail, actions = []) {
+  const node = document.createElement('div');
+  node.className = 'stack-row';
+  const main = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.textContent = text;
+  const small = document.createElement('small');
+  small.textContent = detail || '';
+  main.append(strong, small);
+  node.append(main);
+  if (actions.length) {
+    const buttons = document.createElement('div');
+    buttons.className = 'row-actions';
+    actions.forEach((button) => buttons.append(button));
+    node.append(buttons);
+  }
+  return node;
+}
+
+function avatar(src, name) {
+  const img = document.createElement('img');
+  img.className = 'directory-avatar';
+  img.src = src || '/public-school-logo.webp';
+  img.alt = name ? `${name} picture` : 'Profile picture';
+  img.onerror = () => { img.src = '/public-school-logo.webp'; };
+  return img;
+}
 
 export async function loadDashboard() {
-  const data=await read('dashboard'); const metrics=clear('#dashboardMetrics'); const cards=data.cards||[];
-  cards.forEach((metric)=>{ const node=document.createElement('article'); node.className='metric-card'; const label=document.createElement('span'); label.textContent=metric.label; const value=document.createElement('strong'); value.textContent=String(metric.value ?? 0); node.append(label,value); metrics?.append(node); });
-  const classes=clear('#dashboardClasses'); const classCards=data.classCards||[];
+  const data = await read('dashboard');
+  const metrics = clear('#dashboardMetrics');
+  (data.cards || []).forEach((metric) => {
+    const node = document.createElement('article');
+    node.className = 'metric-card';
+    const label = document.createElement('span');
+    label.textContent = metric.label;
+    const value = document.createElement('strong');
+    value.textContent = String(metric.value ?? 0);
+    node.append(label, value);
+    metrics?.append(node);
+  });
+  const classes = clear('#dashboardClasses');
+  const classCards = data.classCards || [];
   if (!classCards.length) empty(classes, data.message || 'No class allocation is currently assigned.');
-  classCards.forEach((item)=>{const card=document.createElement('article');card.className='class-scope-tile';card.innerHTML=`<span>${esc(item.label || labelClass(item.classKey))}</span><strong>${esc(item.total ?? 0)}</strong><small>${esc(item.female ?? 0)} female · ${esc(item.male ?? 0)} male</small>`;const open=document.createElement('button');open.className='ghost';open.type='button';open.textContent='Open class';open.onclick=()=>window.RegistryApp.openStudentClass(item.classKey);card.append(open);classes?.append(card);});
+  classCards.forEach((item) => {
+    const card = document.createElement('article');
+    card.className = 'class-scope-tile';
+    card.innerHTML = `<span>${esc(item.label || labelClass(item.classKey))}</span><strong>${esc(item.total ?? 0)}</strong><small>${esc(item.female ?? 0)} female · ${esc(item.male ?? 0)} male</small>`;
+    const open = document.createElement('button');
+    open.className = 'ghost';
+    open.type = 'button';
+    open.textContent = 'Open class';
+    open.onclick = () => window.RegistryApp.openStudentClass(item.classKey);
+    card.append(open);
+    classes?.append(card);
+  });
 }
 
 export async function loadStudents() {
-  const catalog=await read('catalog').catch(()=>null); const select=$('#studentClass'); if(select&&catalog?.classes&&select.options.length<=1){catalog.classes.filter((c)=>c.is_active).forEach((c)=>select.append(new Option(c.display_name || labelClass(c.class_key),c.class_key)));}
-  const classKey=select?.value || '';const search=$('#studentSearch');const status=$('#studentStatus');const searchButton=$('#studentSearchButton');[search,status,searchButton].forEach((node)=>{if(node)node.disabled=!classKey;});$('#studentPrompt')?.toggleAttribute('hidden',Boolean(classKey));$('#studentResults')?.toggleAttribute('hidden',!classKey);const rows=clear('#studentRows');
-  const canManageSchool=hasCapability('students.school.manage'); const classScopes=state.context?.entitlements?.classScopes || [];
-  const canManage=(student)=>canManageSchool || (hasCapability('students.class.manage') && classScopes.includes(student.class_key));
-  $('#newStudentButton')?.toggleAttribute('hidden',!(canManageSchool || (hasCapability('students.class.manage') && classScopes.length)));
-  if(!classKey)return;
-  const payload={search:search?.value || '',classKey,status:status?.value ?? 'active'}; const data=await read('students',payload); const emptyNode=$('#studentEmpty'); if(emptyNode) emptyNode.hidden=Boolean(data.students?.length);
-  if(!data.students?.length)empty(rows,'No students found in your permitted scope.');
-  data.students.forEach((student)=>{const node=document.createElement('tr');const person=document.createElement('td');const wrap=document.createElement('div');wrap.className='person-cell';const names=document.createElement('div');names.innerHTML=`<strong>${esc(student.name)}</strong><small>${esc(student.gender || '')}</small>`;wrap.append(avatar(student.photo,student.name),names);person.append(wrap);node.append(person);node.insertAdjacentHTML('beforeend',`<td>${esc(student.class_label || labelClass(student.class_key))}</td><td>${esc(student.admno || 'Pending')}</td><td>${esc(student.guardian_count || 0)}</td><td><span class="badge ${student.archived?'archived':'active'}">${esc(student.lifecycle_status || (student.archived?'archived':'active'))}</span></td><td></td>`);if(canManage(student)){const actions=document.createElement('div');actions.className='row-actions';const edit=document.createElement('button');edit.type='button';edit.className='ghost';edit.textContent=student.archived?'Restore':'Edit';edit.dataset.studentAction=student.archived?'restore':'edit';edit.dataset.studentId=student.id;actions.append(edit);if(!student.archived){const archive=document.createElement('button');archive.type='button';archive.className='ghost';archive.textContent='Archive';archive.dataset.studentAction='archive';archive.dataset.studentId=student.id;actions.append(archive);}node.lastElementChild.append(actions);}rows?.append(node);});
+  const catalog = await read('catalog').catch(() => null);
+  const select = $('#studentClass');
+  if (select && catalog?.classes && select.options.length <= 1) {
+    catalog.classes.filter((item) => item.is_active).forEach((item) => select.append(new Option(item.display_name || labelClass(item.class_key), item.class_key)));
+  }
+  const classKey = select?.value || '';
+  const search = $('#studentSearch');
+  const status = $('#studentStatus');
+  const searchButton = $('#studentSearchButton');
+  [search, status, searchButton].forEach((node) => { if (node) node.disabled = !classKey; });
+  $('#studentPrompt')?.toggleAttribute('hidden', Boolean(classKey));
+  $('#studentResults')?.toggleAttribute('hidden', !classKey);
+  const rows = clear('#studentRows');
+  const canManageSchool = hasCapability('students.school.manage');
+  const classScopes = state.context?.entitlements?.classScopes || [];
+  const canEdit = (student) => canManageSchool || (hasCapability('students.class.manage') && classScopes.includes(student.class_key));
+  const canProfile = (student) => canEdit(student) || hasCapability('portfolio.manage');
+  $('#newStudentButton')?.toggleAttribute('hidden', !(canManageSchool || (hasCapability('students.class.manage') && classScopes.length)));
+  if (!classKey) return;
+  const payload = { search: search?.value || '', classKey, status: status?.value ?? 'active' };
+  const data = await read('students', payload);
+  const emptyNode = $('#studentEmpty');
+  if (emptyNode) emptyNode.hidden = Boolean(data.students?.length);
+  if (!data.students?.length) empty(rows, 'No students found in your permitted scope.');
+  data.students.forEach((student) => {
+    const node = document.createElement('tr');
+    const person = document.createElement('td');
+    const wrap = document.createElement('div');
+    wrap.className = 'person-cell';
+    const names = document.createElement('div');
+    names.innerHTML = `<strong>${esc(student.name)}</strong><small>${esc(student.gender || '')}</small>`;
+    wrap.append(avatar(student.photo, student.name), names);
+    person.append(wrap);
+    node.append(person);
+    node.insertAdjacentHTML('beforeend', `<td>${esc(student.class_label || labelClass(student.class_key))}</td><td>${esc(student.admno || 'Pending')}</td><td>${esc(student.guardian_count || 0)}</td><td><span class="badge ${student.archived ? 'archived' : 'active'}">${esc(student.lifecycle_status || (student.archived ? 'archived' : 'active'))}</span></td><td></td>`);
+    if (canProfile(student)) {
+      const actions = document.createElement('div');
+      actions.className = 'row-actions';
+      const profile = document.createElement('button');
+      profile.type = 'button';
+      profile.className = 'ghost';
+      profile.textContent = 'Profile';
+      profile.dataset.studentAction = 'profile';
+      profile.dataset.studentId = student.id;
+      actions.append(profile);
+      if (canEdit(student)) {
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'ghost';
+        edit.textContent = student.archived ? 'Restore' : 'Edit';
+        edit.dataset.studentAction = student.archived ? 'restore' : 'edit';
+        edit.dataset.studentId = student.id;
+        actions.append(edit);
+        if (!student.archived) {
+          const archive = document.createElement('button');
+          archive.type = 'button';
+          archive.className = 'ghost';
+          archive.textContent = 'Archive';
+          archive.dataset.studentAction = 'archive';
+          archive.dataset.studentId = student.id;
+          actions.append(archive);
+        }
+      }
+      node.lastElementChild.append(actions);
+    }
+    rows?.append(node);
+  });
 }
 
 export async function loadStaff() {
-  const data=await read('staff',{search:$('#staffSearch')?.value || '',status:'active'}); const rows=clear('#staffRows'); const emptyNode=$('#staffEmpty'); if(emptyNode) emptyNode.hidden=Boolean(data.staff?.length); if(!data.staff?.length)empty(rows,'No staff records in your permitted scope.');
-  data.staff.forEach((staff)=>{const node=document.createElement('tr');const person=document.createElement('td');const wrap=document.createElement('div');wrap.className='person-cell';const names=document.createElement('div');names.innerHTML=`<strong>${esc(staff.full_name)}</strong><small>${esc(staff.staff_number || '')}</small>`;wrap.append(avatar(staff.photo,staff.full_name),names);person.append(wrap);node.append(person);node.insertAdjacentHTML('beforeend',`<td>${esc(staff.designation || staff.staff_category || 'Staff')}</td><td>${esc(staff.phone || staff.email || 'Not supplied')}</td><td><span class="badge ${staff.employment_status==='active'?'active':'archived'}">${esc(staff.employment_status || staff.registration_status)}</span></td>`);rows?.append(node);});
-  const self=data.self || (data.staff||[]).find((x)=>x.central_person_id===state.context?.actor?.personId); if(self){$('#selfPhone').value=self.phone||'';$('#selfWhatsapp').value=self.whatsapp_number||'';$('#selfAddress').value=self.address||'';$('#selfEmergency').value=self.emergency_contact||'';const preview=$('#selfPhotoPreview');if(preview)preview.src=self.photo||'/public-school-logo.webp';setText('#signatureStatus',self.signature_path?'Signature uploaded':'No signature uploaded.');}
+  const data = await read('staff', { search: $('#staffSearch')?.value || '', status: 'active' });
+  const rows = clear('#staffRows');
+  const emptyNode = $('#staffEmpty');
+  if (emptyNode) emptyNode.hidden = Boolean(data.staff?.length);
+  if (!data.staff?.length) empty(rows, 'No staff records in your permitted scope.');
+  data.staff.forEach((staff) => {
+    const node = document.createElement('tr');
+    const person = document.createElement('td');
+    const wrap = document.createElement('div');
+    wrap.className = 'person-cell';
+    const names = document.createElement('div');
+    names.innerHTML = `<strong>${esc(staff.full_name)}</strong><small>${esc(staff.staff_number || '')}</small>`;
+    wrap.append(avatar(staff.photo, staff.full_name), names);
+    person.append(wrap);
+    node.append(person);
+    node.insertAdjacentHTML('beforeend', `<td>${esc(staff.designation || staff.staff_category || 'Staff')}</td><td>${esc(staff.phone || staff.email || 'Not supplied')}</td><td><span class="badge ${staff.employment_status === 'active' ? 'active' : 'archived'}">${esc(staff.employment_status || staff.registration_status)}</span></td><td></td>`);
+    if (hasCapability('portfolio.manage')) {
+      const action = document.createElement('button');
+      action.type = 'button';
+      action.className = 'ghost';
+      action.textContent = 'Open profile';
+      action.dataset.staffAction = 'profile';
+      action.dataset.staffId = staff.staff_id || staff.id;
+      node.lastElementChild.append(action);
+    }
+    rows?.append(node);
+  });
+  const self = data.self || (data.staff || []).find((item) => item.central_person_id === state.context?.actor?.personId);
+  if (self) {
+    $('#selfPhone').value = self.phone || '';
+    $('#selfWhatsapp').value = self.whatsapp_number || '';
+    $('#selfAddress').value = self.address || '';
+    $('#selfEmergency').value = self.emergency_contact || '';
+    const preview = $('#selfPhotoPreview');
+    if (preview) preview.src = self.photo || '/public-school-logo.webp';
+    setText('#signatureStatus', self.signature_path ? 'Signature uploaded' : 'No signature uploaded.');
+  }
 }
 
 export async function loadRegistrations() {
-  const data=await read('registrations',{status:$('#registrationStatus')?.value || 'pending'}).catch((error)=>({ok:false,error})); const target=clear('#registrationRows'); const emptyNode=$('#registrationEmpty'); if(!data?.registrations?.length){emptyNode?.removeAttribute('hidden');empty(target,'No registrations found.');return;} emptyNode?.setAttribute('hidden','hidden'); data.registrations.forEach((item)=>{const actions=[];if(hasCapability('staff.school.read') && ['pending','under_review'].includes(item.registration_status)){const review=document.createElement('button');review.className='ghost';review.type='button';review.textContent='Mark under review';review.onclick=()=>window.RegistryApp.reviewRegistration(item,'under_review');actions.push(review);}if(hasCapability('portfolio.manage') && ['pending','under_review'].includes(item.registration_status)){const approve=document.createElement('button');approve.className='primary';approve.type='button';approve.textContent='Approve';approve.onclick=()=>window.RegistryApp.reviewRegistration(item,'registration.approve');const reject=document.createElement('button');reject.className='ghost';reject.type='button';reject.textContent='Reject';reject.onclick=()=>window.RegistryApp.reviewRegistration(item,'registration.reject');actions.push(approve,reject);}target?.append(row(item.full_name,`${item.email || 'No email'} · ${item.registration_status}${item.submitted_at ? ` · ${formatDate(item.submitted_at)}` : ''}`,actions));});
+  const data = await read('registrations', { status: $('#registrationStatus')?.value || 'pending' }).catch((error) => ({ ok: false, error }));
+  const target = clear('#registrationRows');
+  const emptyNode = $('#registrationEmpty');
+  if (!data?.registrations?.length) {
+    emptyNode?.removeAttribute('hidden');
+    empty(target, 'No registrations found.');
+    return;
+  }
+  emptyNode?.setAttribute('hidden', 'hidden');
+  data.registrations.forEach((item) => {
+    const actions = [];
+    if (hasCapability('staff.school.read') && ['pending', 'under_review'].includes(item.registration_status)) {
+      const review = document.createElement('button');
+      review.className = 'ghost';
+      review.type = 'button';
+      review.textContent = 'Mark under review';
+      review.onclick = () => window.RegistryApp.reviewRegistration(item, 'under_review');
+      actions.push(review);
+    }
+    if (hasCapability('portfolio.manage') && ['pending', 'under_review'].includes(item.registration_status)) {
+      const approve = document.createElement('button');
+      approve.className = 'primary';
+      approve.type = 'button';
+      approve.textContent = 'Approve';
+      approve.onclick = () => window.RegistryApp.reviewRegistration(item, 'registration.approve');
+      const reject = document.createElement('button');
+      reject.className = 'ghost';
+      reject.type = 'button';
+      reject.textContent = 'Reject';
+      reject.onclick = () => window.RegistryApp.reviewRegistration(item, 'registration.reject');
+      actions.push(approve, reject);
+    }
+    target?.append(row(item.full_name, `${item.email || 'No email'} · ${item.registration_status}${item.submitted_at ? ` · ${formatDate(item.submitted_at)}` : ''}`, actions));
+  });
 }
 
 export async function loadAllocations() {
-  const [catalog,data]=await Promise.all([read('catalog'),read('allocations')]);
-  allocationSnapshot={catalog,data};
-  setText('#allocationContext',`${data.current?.academic_session || '—'} · ${data.current?.term || '—'}`);
-  const canManageSchool=hasCapability('allocations.school.manage'); const canManageEarly=hasCapability('allocations.early_childhood.manage');
-  $('#classAllocationCard')?.toggleAttribute('hidden',!canManageSchool&&!canManageEarly); $('#subjectAllocationCard')?.toggleAttribute('hidden',!canManageSchool);
-  const classSelect=$('#allocationClass'); const subjectClass=$('#subjectClass'); const staffSelect=$('#allocationStaff'); const subjectStaff=$('#subjectStaff'); const fill=(select,items,placeholder,fn)=>{if(!select)return;const value=select.value;select.replaceChildren(new Option(placeholder,''));items.forEach((item)=>select.append(new Option(fn(item),item.class_key || item.id)));select.value=value;};
-  fill(classSelect,catalog.classes||[],'Choose class',(x)=>x.display_name||labelClass(x.class_key)); fill(subjectClass,catalog.classes||[],'Choose class',(x)=>x.display_name||labelClass(x.class_key)); const staffs=catalog.staff||[]; [staffSelect,subjectStaff].forEach((s)=>fill(s,staffs,'Choose staff',(x)=>`${x.full_name} · ${x.staff_number || ''}`)); renderSubjects(catalog.subjects||[],subjectClass?.value);
-  const reportSelect=$('#responsibilityClass');if(reportSelect&&reportSelect.options.length<=1)(catalog.classes||[]).filter((x)=>x.stage_code==='secondary'&&x.is_active!==false).forEach((x)=>reportSelect.append(new Option(x.display_name||labelClass(x.class_key),x.class_key)));
+  const [catalog, data] = await Promise.all([read('catalog'), read('allocations')]);
+  allocationSnapshot = { catalog, data };
+  setText('#allocationContext', `${data.current?.academic_session || '—'} · ${data.current?.term || '—'}`);
+  const canManageSchool = hasCapability('allocations.school.manage');
+  const canManageEarly = hasCapability('allocations.early_childhood.manage');
+  $('#classAllocationCard')?.toggleAttribute('hidden', !canManageSchool && !canManageEarly);
+  $('#subjectAllocationCard')?.toggleAttribute('hidden', !canManageSchool);
+  const classSelect = $('#allocationClass');
+  const subjectClass = $('#subjectClass');
+  const staffSelect = $('#allocationStaff');
+  const subjectStaff = $('#subjectStaff');
+  const fill = (select, items, placeholder, fn) => {
+    if (!select) return;
+    const value = select.value;
+    select.replaceChildren(new Option(placeholder, ''));
+    items.forEach((item) => select.append(new Option(fn(item), item.class_key || item.id)));
+    select.value = value;
+  };
+  fill(classSelect, catalog.classes || [], 'Choose class', (item) => item.display_name || labelClass(item.class_key));
+  fill(subjectClass, catalog.classes || [], 'Choose class', (item) => item.display_name || labelClass(item.class_key));
+  const staffs = catalog.staff || [];
+  [staffSelect, subjectStaff].forEach((select) => fill(select, staffs, 'Choose staff', (item) => `${item.full_name} · ${item.staff_number || ''}`));
+  renderSubjects(catalog.subjects || [], subjectClass?.value);
+  const reportSelect = $('#responsibilityClass');
+  if (reportSelect && reportSelect.options.length <= 1) (catalog.classes || []).filter((item) => item.stage_code === 'secondary' && item.is_active !== false).forEach((item) => reportSelect.append(new Option(item.display_name || labelClass(item.class_key), item.class_key)));
   renderSelectedResponsibilities(reportSelect?.value || '');
 }
-export function renderSubjects(subjects,classKey){const node=clear('#subjectChoices');const filtered=subjects.filter((s)=>!classKey || s.class_key===classKey);if(!filtered.length){empty(node,'Choose a class to see its active subjects.');return;}filtered.forEach((s)=>{const label=document.createElement('label');const input=document.createElement('input');input.type='checkbox';input.value=s.subject_index;label.append(input,document.createTextNode(s.subject_name || `Subject ${s.subject_index}`));node?.append(label);});}
-export function renderSelectedResponsibilities(classKey){
-  const target=clear('#allocationRows');const classPrint=$('#printClassResponsibilities');const subjectPrint=$('#printSubjectResponsibilities');if(classPrint)classPrint.disabled=!classKey;if(subjectPrint)subjectPrint.disabled=!classKey;
-  if(!classKey||!allocationSnapshot){if(target){target.className='responsibility-sheet-placeholder';target.innerHTML='<img src="/public-school-logo.webp" alt=""><p>Select a secondary-school class to view its current responsibilities.</p>';}return;}
-  const {catalog,data}=allocationSnapshot;const current=data.current||{};const isCurrent=(item)=>item.allocation_status==='active'&&item.academic_session===current.academic_session&&item.term_name===current.term&&item.class_key===classKey;
-  const classes=(data.classAllocationHistory||data.classAllocations||[]).filter(isCurrent);const subjects=(data.subjectAllocationHistory||data.subjectAllocations||[]).filter(isCurrent);const main=classes.find((x)=>x.responsibility==='class_teacher');const assistants=classes.filter((x)=>x.responsibility==='assistant_class_teacher');const className=(catalog.classes||[]).find((x)=>x.class_key===classKey)?.display_name||labelClass(classKey);const canManage=hasCapability('allocations.school.manage');
-  target.className='official-responsibility-sheet';target.dataset.classKey=classKey;target.innerHTML=`<header><img src="/public-school-logo.webp" alt="School logo"><div><small>WAY TO SUCCESS STANDARD SCHOOLS · EJIGBO</small><h2>${esc(className)} Responsibilities</h2><p>${esc(current.academic_session||'')} · ${esc(current.term||'')}</p></div></header><section data-print-section="class"><h3>Class responsibility</h3><dl><div><dt>Class Teacher</dt><dd>${esc(main?.full_name||'Not assigned')}</dd></div>${assistants.length?`<div><dt>Assistant${assistants.length>1?'s':''}</dt><dd>${assistants.map((x)=>esc(x.full_name||'')).join(', ')}</dd></div>`:''}</dl></section><section data-print-section="subjects"><h3>Subject teachers</h3><div class="subject-responsibility-list"></div></section>`;
-  const list=target.querySelector('.subject-responsibility-list');if(!subjects.length)list.innerHTML='<p class="empty-inline">No subject teachers assigned.</p>';subjects.sort((a,b)=>String(a.subject_name||'').localeCompare(String(b.subject_name||''))).forEach((item)=>{const line=document.createElement('div');line.innerHTML=`<span>${esc(item.subject_name||`Subject ${item.subject_index}`)}</span><strong>${esc(item.full_name||'Not assigned')}</strong>`;list.append(line);});
-  if(canManage){const controls=document.createElement('div');controls.className='responsibility-admin-actions no-print';[...classes,...subjects].forEach((item)=>{const button=document.createElement('button');button.type='button';button.className='ghost';button.textContent=`Remove ${item.subject_name||item.responsibility?.replaceAll('_',' ')}`;button.onclick=()=>window.RegistryApp.endAllocation(item,item.subject_name?'allocations.subject.end':'allocations.class.end');controls.append(button);});target.append(controls);}
-}
-export function printResponsibilities(type){const sheet=$('#allocationRows');if(!sheet?.dataset.classKey)return;document.body.dataset.printResponsibility=type;window.print();delete document.body.dataset.printResponsibility;}
 
-export async function loadPortalAccess() {
-  const search=$('#accessSearch')?.value || '';
-  const selected=window.RegistryApp.selectedPersonId || '';
-  const data=await read('portal_access',{personId:selected,search});
-  const resultsControl=data.resultsOperatingControl || {};
-  const resultsOnHold=resultsControl.operating_mode!=='active';
-  const badge=$('#resultsOperatingBadge');
-  if(badge){badge.textContent=resultsOnHold?'On hold':'Recording open';badge.className=`badge ${resultsOnHold?'revoked':'active'}`;}
-  setText('#resultsOperatingMessage',resultsControl.reason || (resultsOnHold?'Result recording is on hold.':'Result recording is open.'));
-  const operatingForm=$('#resultsOperatingForm');
-  operatingForm?.toggleAttribute('hidden',!data.canManageOperatingControls);
-  const operatingButton=$('#resultsOperatingToggle');
-  if(operatingButton){operatingButton.textContent=resultsOnHold?'Resume result recording':'Put result recording on hold';operatingButton.dataset.nextMode=resultsOnHold?'active':'read_only';}
-  const list=clear('#accessStaffList');
-  (data.staff||[]).forEach((staff)=>{const button=document.createElement('button');button.type='button';button.className=`access-person-button ${staff.central_person_id===selected?'active':''}`;button.innerHTML=`<strong>${esc(staff.full_name)}</strong><small>${esc(staff.staff_number || staff.designation || '')}</small>`;button.onclick=()=>{window.RegistryApp.selectedPersonId=staff.central_person_id;state.cache.delete(`portal_access:${JSON.stringify({personId:staff.central_person_id,search})}`);loadPortalAccess();};list?.append(button);});
-  const detail=$('#accessDetail');
-  if(!selected){detail.innerHTML='<div class="empty">Select a staff member.</div>';return;}
-  const selectedStaff=(data.staff||[]).find((x)=>x.central_person_id===selected);
-  detail.replaceChildren();
-  const title=document.createElement('h3');title.textContent=selectedStaff?.full_name || 'Portal access';detail.append(title);
-  const grid=document.createElement('div');grid.className='portal-grid';
-  (data.catalog||[]).forEach((portal)=>{
-    const grant=(data.grants||[]).find((g)=>g.app_code===portal.app_code);
-    const mode=portal.operating_mode || 'disabled';
-    const globallyUnavailable=mode==='disabled' || (mode==='pilot'&&!selectedStaff?.technical_pilot_user);
-    const card=document.createElement('article');card.className=`portal-card ${grant?.grant_status==='active'?'isActive':''}`;
-    card.innerHTML=`<header><strong>${esc(portal.app_name || portal.app_code)}</strong><span class="badge ${grant?.grant_status==='active'?'active':'revoked'}">${esc(grant?.grant_status || 'not assigned')}</span></header><p>${esc(portal.description || '')}</p><small class="muted">Operating mode: ${esc(mode.replaceAll('_',' '))}${portal.operating_reason?` · ${esc(portal.operating_reason)}`:''}</small>`;
-    const controls=document.createElement('div');controls.className='portal-controls';
-    const role=document.createElement('select');role.setAttribute('aria-label',`${portal.app_name || portal.app_code} role`);
-    const fallbackRoles=portal.app_code==='results'?['staff','results_admin']:portal.app_code==='attendance'?['staff','attendance_admin']:portal.app_code==='notifications'?['staff','notification_admin']:portal.app_code==='central_registry'?['staff','registry_admin']:['staff'];
-    const roles=[...(Array.isArray(portal.default_roles)&&portal.default_roles.length?portal.default_roles:fallbackRoles)];if(grant?.access_role&&!roles.includes(grant.access_role))roles.push(grant.access_role);roles.forEach((value)=>role.append(new Option(String(value).replaceAll('_',' '),value)));role.value=grant?.access_role || roles[0];
-    role.disabled=globallyUnavailable || (!hasCapability('portal.results.admin')&&!hasCapability('attendance.setup')&&roles.some((value)=>['admin','administrator','registry_admin','results_admin','attendance_admin'].includes(String(value).toLowerCase())));
-    const button=document.createElement('button');button.type='button';button.className=grant?.grant_status==='active'?'ghost':'primary';button.textContent=grant?.grant_status==='active'?'Disable entry':'Enable entry';button.disabled=globallyUnavailable&&grant?.grant_status!=='active';button.onclick=()=>window.RegistryApp.write('portal.access.set',{personId:selected,appCode:portal.app_code,enabled:grant?.grant_status!=='active',accessRole:role.value});
-    controls.append(role,button);card.append(controls);grid.append(card);
-  });
-  detail.append(grid);
-}
-
-export async function loadCalendar() { const data=await read('calendar');setText('#calendarCurrent',`${data.current?.academic_session || '—'} · ${data.current?.term || '—'}`);const warning=clear('#calendarWarnings');(data.configurationWarnings||[]).forEach((item)=>{const node=document.createElement('div');node.className='warning';node.textContent=item.message;warning?.append(node);});const terms=clear('#calendarTerms');(data.terms||[]).forEach((term)=>terms?.append(row(`${term.academic_session} · ${term.term_name}`,`${term.term_status}${term.is_current?' · current':''}`)));const current=data.current||{};$('#sourceSession').value=current.academic_session||'';$('#targetSession').value=current.academic_session ? current.academic_session.replace(/^(\d{4})\/(\d{4})$/,(_,a,b)=>`${Number(a)+1}/${Number(b)+1}`):'';if(!hasCapability('academic_calendar.manage'))$('#transitionCard')?.setAttribute('hidden','hidden');}
-
-export async function loadPortfolio() {
-  const [data,catalog]=await Promise.all([read('portfolio'),read('catalog').catch(()=>({classes:[],staff:[]}))]);const canManage=hasCapability('portfolio.manage');portfolioSnapshot={data,catalog,canManage};
-  fillPortfolioOptions((data.catalog||[]).filter((item)=>item.holder_type==='staff'),catalog,[]);
-  $('#portfolioToggleForm')?.toggleAttribute('hidden',!canManage||portfolioTab!=='staff');
-  $('#portfolioAssignmentForm')?.setAttribute('hidden','hidden');
-  await renderPortfolioOccupants();
-  const prefect=await read('prefect').catch(()=>({candidates:[]})); await renderPrefectBootstrap(prefect); const ptarget=clear('#prefectRows'); if(!prefect.candidates?.length)empty(ptarget,'No prefect candidates are open.'); prefect.candidates?.forEach((candidate)=>{const action=document.createElement('button');action.className='ghost';action.type='button';action.textContent=candidate.candidate_status==='candidate'?'Select':candidate.candidate_status.replaceAll('_',' ');action.disabled=!prefect.canManage || candidate.candidate_status!=='candidate';const office=document.createElement('input');office.className='compact-input';office.placeholder='Office / title';office.maxLength=120;office.value=candidate.office_name || '';office.disabled=action.disabled;action.onclick=()=>window.RegistryApp.write('prefect.select',{cycleId:candidate.cycle_id,studentId:candidate.student_id,selected:true,officeName:office.value.trim()});ptarget?.append(row(candidate.student_name || candidate.student_number || candidate.student_id,`${candidate.class_key || ''} · ${candidate.candidate_status}${candidate.office_name?` · ${candidate.office_name}`:''}`,[office,action]));}); $('#prefectPanel')?.toggleAttribute('hidden',portfolioTab!=='student'); $('#openPrefectCycle').disabled=!prefect.canManage || state.context?.academicContext?.term!=='3rd Term';
-}
-async function renderPortfolioOccupants(){
-  const target=clear('#portfolioRows');if(!target||!portfolioSnapshot)return;target.hidden=!portfolioRevealed;if(!portfolioRevealed)return;const {data,catalog,canManage}=portfolioSnapshot;const assignments=(data.assignments||[]).filter((x)=>x.assignment_status==='active'&&x.holder_type===portfolioTab);const staffMap=new Map((catalog.staff||[]).map((x)=>[x.staff_id||x.id,x]));const studentMap=new Map();if(portfolioTab==='student'){await Promise.all([...new Set(assignments.map((x)=>x.student_id).filter(Boolean))].map(async(id)=>{const result=await read('student',{studentId:id}).catch(()=>({students:[]}));if(result.students?.[0])studentMap.set(id,result.students[0]);}));}
-  if(!assignments.length){empty(target,`No active ${portfolioTab} portfolio occupants.`);return;}
-  assignments.forEach((item)=>{const occupant=portfolioTab==='staff'?(staffMap.get(item.staff_id)?.full_name||'Staff record'):(studentMap.get(item.student_id)?.name||'Student record');const label=item.office_name||data.catalog?.find((x)=>x.portfolio_code===item.portfolio_code)?.portfolio_name||item.portfolio_code.replaceAll('_',' ');const actions=[];if(canManage){const change=document.createElement('button');change.type='button';change.className='ghost';change.textContent='Change';change.onclick=()=>{if(portfolioTab==='staff'){const form=$('#portfolioAssignmentForm');form.hidden=false;$('#portfolioCode').value=item.portfolio_code;syncPortfolioForm();form.scrollIntoView({behavior:'smooth',block:'center'});}else toast('Use the Student Executive Council controls to change a student appointment.','success');};const end=document.createElement('button');end.type='button';end.className='ghost danger';end.textContent='Remove';end.onclick=()=>window.RegistryApp.endAllocation(item,'portfolio.assignment.end');actions.push(change,end);}target.append(row(label,occupant,actions));});
-}
-export async function setPortfolioTab(tab){portfolioTab=tab==='student'?'student':'staff';portfolioRevealed=false;$$('[data-portfolio-tab]').forEach((button)=>button.classList.toggle('active',button.dataset.portfolioTab===portfolioTab));setText('#portfolioEyebrow',portfolioTab==='staff'?'STAFF PORTFOLIOS':'STUDENT PORTFOLIOS');$('#portfolioHolderType').value=portfolioTab;$('#prefectPanel')?.toggleAttribute('hidden',portfolioTab!=='student');$('#portfolioToggleForm')?.toggleAttribute('hidden',!portfolioSnapshot?.canManage||portfolioTab!=='staff');$('#portfolioAssignmentForm')?.setAttribute('hidden','hidden');$('#portfolioReveal').textContent=`View current ${portfolioTab==='staff'?'occupants':'student appointments'}`;await renderPortfolioOccupants();}
-export async function revealPortfolio(){portfolioRevealed=true;await renderPortfolioOccupants();}
-export async function loadPortfolioStudents(classKey){const select=$('#portfolioStudent');select.replaceChildren(new Option('Select student',''));if(!classKey)return;const data=await read('students',{status:'active',classKey});(data.students||[]).forEach((item)=>select.append(new Option(`${item.name} · ${item.admno||''}`,item.id)));}
-async function renderPrefectBootstrap(prefect){
-  const panel=$('#prefectPanel');if(!panel)return;let node=$('#prefectBootstrap');
-  if(!node){
-    node=document.createElement('div');node.id='prefectBootstrap';node.className='panel-divider';
-    node.innerHTML='<p class="panelEyebrow">VERIFIED CURRENT SS3 PREFECTS</p><p class="muted">Register only appointments confirmed by the school document. Each entry requires the present SS3 student and the verified office/post.</p><div class="prefect-import-row"><select id="prefectBootstrapStudents" aria-label="Current SS3 student"></select><input id="prefectBootstrapOffice" maxlength="120" placeholder="Verified office / post"><button class="ghost" id="prefectBootstrapAdd" type="button">Add appointment</button></div><div id="prefectBootstrapPending" class="stack-list"></div><button class="primary" id="prefectBootstrapSave" type="button">Register verified current prefects</button>';
-    panel.insertBefore(node,$('#prefectRows'));
+export function renderSubjects(subjects, classKey) {
+  const node = clear('#subjectChoices');
+  const filtered = subjects.filter((item) => !classKey || item.class_key === classKey);
+  if (!filtered.length) {
+    empty(node, 'Choose a class to see its active subjects.');
+    return;
   }
-  const completed=Boolean(prefect.bootstrap?.completed_at);node.hidden=!prefect.canBootstrap||completed;if(node.hidden)return;
-  const groups=await Promise.all(['ss3-general','ss3-science','ss3-arts','ss3-business'].map((classKey)=>read('students',{status:'active',classKey}).catch(()=>({students:[]}))));
-  const students=groups.flatMap((group)=>group.students||[]);const select=$('#prefectBootstrapStudents');select.replaceChildren(new Option('Choose current SS3 student',''));students.forEach((student)=>select.append(new Option(`${student.name} · ${student.admno || student.class_key}`,student.id)));
-  const renderPending=()=>{const target=clear('#prefectBootstrapPending');if(!prefectBootstrapAssignments.length){empty(target,'No verified prefect appointment has been added.');return;}prefectBootstrapAssignments.forEach((assignment,index)=>{const student=students.find((item)=>item.id===assignment.studentId);const remove=document.createElement('button');remove.type='button';remove.className='ghost';remove.textContent='Remove';remove.onclick=()=>{prefectBootstrapAssignments.splice(index,1);renderPending();};target?.append(row(student?.name||assignment.studentId,assignment.officeName,[remove]));});};
-  $('#prefectBootstrapAdd').onclick=()=>{const studentId=select.value;const officeName=$('#prefectBootstrapOffice').value.trim();if(!studentId||officeName.length<2){toast('Choose an SS3 student and enter the verified office.','error');return;}if(prefectBootstrapAssignments.some((item)=>item.studentId===studentId&&item.officeName.toLowerCase()===officeName.toLowerCase())){toast('That exact student appointment is already in the verified list.','error');return;}prefectBootstrapAssignments.push({studentId,officeName});select.value='';$('#prefectBootstrapOffice').value='';renderPending();};
-  $('#prefectBootstrapSave').onclick=async()=>{if(!prefectBootstrapAssignments.length){toast('Add at least one verified SS3 prefect appointment.','error');return;}const assignments=[...prefectBootstrapAssignments];prefectBootstrapAssignments=[];renderPending();try{await window.RegistryApp.write('prefect.bootstrap',{assignments});}catch(error){prefectBootstrapAssignments=assignments;renderPending();}};renderPending();
+  filtered.forEach((item) => {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = item.subject_index;
+    label.append(input, document.createTextNode(item.subject_name || `Subject ${item.subject_index}`));
+    node?.append(label);
+  });
 }
-function fillPortfolioOptions(portfolios,catalog,students){portfolioCatalog=portfolios;const portfolioSelect=$('#portfolioCode');const staffSelect=$('#portfolioStaff');const studentSelect=$('#portfolioStudent');const studentClass=$('#portfolioStudentClass');const classSelect=$('#portfolioClass');if(portfolioSelect){const value=portfolioSelect.value;portfolioSelect.replaceChildren(new Option('Choose portfolio',''));portfolios.forEach((item)=>portfolioSelect.append(new Option(item.portfolio_name || item.portfolio_code,item.portfolio_code)));portfolioSelect.value=value;}if(staffSelect){const value=staffSelect.value;staffSelect.replaceChildren(new Option('Choose staff',''));(catalog.staff||[]).forEach((item)=>staffSelect.append(new Option(`${item.full_name} · ${item.staff_number || ''}`,item.staff_id || item.id)));staffSelect.value=value;}if(studentSelect){studentSelect.replaceChildren(new Option('Select student',''));students.forEach((item)=>studentSelect.append(new Option(`${item.name} · ${item.admno || item.class_key || ''}`,item.id)));}for(const select of [studentClass,classSelect])if(select&&select.options.length<=1)(catalog.classes||[]).forEach((item)=>select.append(new Option(item.display_name || labelClass(item.class_key),item.class_key)));syncPortfolioForm(portfolios);}
-export function syncPortfolioForm(portfolios=portfolioCatalog) {const selected=portfolios.find((item)=>item.portfolio_code===$('#portfolioCode')?.value);const holder=selected?.holder_type || $('#portfolioHolderType')?.value || 'staff';if(selected&&$('#portfolioHolderType'))$('#portfolioHolderType').value=holder;const jurisdiction=holder==='student'?'self':(selected?.jurisdiction || 'school');const student=$('#portfolioStudentField');const staff=$('#portfolioStaffField');const scope=$('#portfolioScopeType');const stage=$('#portfolioStageField');const cls=$('#portfolioClassField');if(staff)staff.hidden=holder!=='staff';if(student)student.hidden=holder!=='student';if(scope){scope.replaceChildren(new Option(jurisdiction.replaceAll('_',' '),jurisdiction));scope.value=jurisdiction;}if(stage)stage.hidden=jurisdiction!=='stage';if(cls)cls.hidden=jurisdiction!=='class';}
 
-export function invalidate(action) { for (const key of state.cache.keys()) if (key.startsWith(`${action}:`)) state.cache.delete(key); }
+export function renderSelectedResponsibilities(classKey) {
+  const target = clear('#allocationRows');
+  const classPrint = $('#printClassResponsibilities');
+  const subjectPrint = $('#printSubjectResponsibilities');
+  if (classPrint) classPrint.disabled = !classKey;
+  if (subjectPrint) subjectPrint.disabled = !classKey;
+  if (!classKey || !allocationSnapshot) {
+    if (target) {
+      target.className = 'responsibility-sheet-placeholder';
+      target.innerHTML = '<img src="/public-school-logo.webp" alt=""><p>Select a secondary-school class to view its current responsibilities.</p>';
+    }
+    return;
+  }
+  const { catalog, data } = allocationSnapshot;
+  const current = data.current || {};
+  const isCurrent = (item) => item.allocation_status === 'active' && item.academic_session === current.academic_session && item.term_name === current.term && item.class_key === classKey;
+  const classes = (data.classAllocationHistory || data.classAllocations || []).filter(isCurrent);
+  const subjects = (data.subjectAllocationHistory || data.subjectAllocations || []).filter(isCurrent);
+  const main = classes.find((item) => item.responsibility === 'class_teacher');
+  const assistants = classes.filter((item) => item.responsibility === 'assistant_class_teacher');
+  const className = (catalog.classes || []).find((item) => item.class_key === classKey)?.display_name || labelClass(classKey);
+  const classRows = `<tr><td>Class Teacher</td><td>${esc(main?.full_name || 'Not assigned')}</td></tr>${assistants.map((item, index) => `<tr><td>Assistant${assistants.length > 1 ? ` ${index + 1}` : ''}</td><td>${esc(item.full_name || 'Not assigned')}</td></tr>`).join('')}`;
+  const subjectRows = subjects.length
+    ? subjects.slice().sort((a, b) => String(a.subject_name || '').localeCompare(String(b.subject_name || ''))).map((item) => `<tr><td>${esc(item.subject_name || `Subject ${item.subject_index}`)}</td><td>${esc(item.full_name || 'Not assigned')}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="empty-inline">No subject teachers assigned.</td></tr>';
+  const canManage = hasCapability('allocations.school.manage');
+  target.className = 'official-responsibility-sheet';
+  target.dataset.classKey = classKey;
+  target.innerHTML = `<header><img src="/public-school-logo.webp" alt="School logo"><div><small>WAY TO SUCCESS STANDARD SCHOOLS · EJIGBO</small><h2>${esc(className)} Responsibilities</h2><p>${esc(current.academic_session || '')} · ${esc(current.term || '')}</p></div></header><section data-print-section="class"><h3>Class responsibilities</h3><table class="responsibility-table"><thead><tr><th>Responsibility</th><th>Assigned staff</th></tr></thead><tbody>${classRows}</tbody></table></section><section data-print-section="subjects"><h3>Subject teachers</h3><table class="responsibility-table"><thead><tr><th>Subject</th><th>Assigned teacher</th></tr></thead><tbody>${subjectRows}</tbody></table></section>`;
+  if (canManage) {
+    const controls = document.createElement('div');
+    controls.className = 'responsibility-admin-actions no-print';
+    [...classes, ...subjects].forEach((item) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ghost';
+      button.textContent = `Remove ${item.subject_name || item.responsibility?.replaceAll('_', ' ')}`;
+      button.onclick = () => window.RegistryApp.endAllocation(item, item.subject_name ? 'allocations.subject.end' : 'allocations.class.end');
+      controls.append(button);
+    });
+    target.append(controls);
+  }
+}
+
+export function printResponsibilities(type) {
+  const sheet = $('#allocationRows');
+  if (!sheet?.dataset.classKey) return;
+  document.body.dataset.printResponsibility = type;
+  window.print();
+  delete document.body.dataset.printResponsibility;
+}
+
+export async function loadCalendar() {
+  const data = await read('calendar');
+  setText('#calendarCurrent', `${data.current?.academic_session || '—'} · ${data.current?.term || '—'}`);
+  const warning = clear('#calendarWarnings');
+  (data.configurationWarnings || []).forEach((item) => {
+    const node = document.createElement('div');
+    node.className = 'warning';
+    node.textContent = item.message;
+    warning?.append(node);
+  });
+  const terms = clear('#calendarTerms');
+  (data.terms || []).forEach((term) => terms?.append(row(`${term.academic_session} · ${term.term_name}`, `${term.term_status}${term.is_current ? ' · current' : ''}`)));
+  const current = data.current || {};
+  $('#sourceSession').value = current.academic_session || '';
+  $('#targetSession').value = current.academic_session ? current.academic_session.replace(/^(\d{4})\/(\d{4})$/, (_, a, b) => `${Number(a) + 1}/${Number(b) + 1}`) : '';
+  if (!hasCapability('academic_calendar.manage')) $('#transitionCard')?.setAttribute('hidden', 'hidden');
+}
+
+export function invalidate(action) {
+  for (const key of state.cache.keys()) if (key.startsWith(`${action}:`)) state.cache.delete(key);
+}

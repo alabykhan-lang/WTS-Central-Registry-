@@ -34,3 +34,10 @@ export async function uploadPhoto(targetType, targetId, dataUrl, requestId) {
   if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || 'PHOTO_UPLOAD_FAILED'), { code: result?.code, status: response.status });
   return result;
 }
+
+export async function profileRequest(payload) {
+  const response = await fetch('/api/registry-profile', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload) });
+  const result = await response.json().catch(() => ({ ok: false, code: 'PROFILE_INVALID_RESPONSE' }));
+  if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || 'PROFILE_REQUEST_FAILED'), { code: result?.code, status: response.status });
+  return result;
+}

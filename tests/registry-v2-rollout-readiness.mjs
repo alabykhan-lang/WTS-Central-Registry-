@@ -13,6 +13,8 @@ const writes = await read('supabase/migrations/20260907222000_registry_v2_scoped
 const prefect = await read('supabase/migrations/20260907222500_registry_v2_prefect_workflow.sql');
 const identity = await read('supabase/migrations/20260908153000_registry_v2_identity_consolidation.sql');
 const pilot = await read('supabase/migrations/20260908170000_portal_pilot_and_result_hold.sql');
+const business = await read('supabase/migrations/20260910100000_registry_business_and_departments.sql');
+const profiles = await read('supabase/migrations/20260910101000_registry_profile_tools.sql');
 const pages = await read('registry/pages.js');
 const html = await read('index.html');
 
@@ -52,7 +54,18 @@ assert.match(prefect, /office_name/);
 assert.match(prefect, /academic_session/);
 assert.match(prefect, /appointment_status','active/);
 assert.match(prefect, /appointment_status','ended/);
-assert.match(pages, /Register only appointments confirmed by the school document/);
+assert.doesNotMatch(pages, /Register only appointments confirmed by the school document/);
+
+assert.match(business, /ss2-business' then 'ss3-business/);
+assert.match(business, /student\.business_stream_corrected/);
+assert.match(business, /department_code/);
+assert.doesNotMatch(business, /delete\s+from\s+public\.students/i);
+assert.match(profiles, /school_registry_profile_session_api/);
+assert.match(profiles, /DEPARTMENT_INVALID/);
+assert.match(profiles, /PROFILE_PORTFOLIO_CREATED/);
+assert.match(profiles, /profile_only/);
+assert.match(profiles, /PORTFOLIO_SENIOR_SECONDARY_ONLY/);
+assert.doesNotMatch(profiles, /delete\s+from\s+public\.(students|school_people|staff_attendance_profiles)/i);
 
 assert.match(foundation, /coalesce\(pc\.metadata->>'visibility','school'\) <> 'technical_only'/);
 assert.match(foundation, /'technicalPrivileges'/);
