@@ -13,14 +13,16 @@ const migrations = (await readdir(new URL('supabase/migrations/', root))).filter
 const sql = await Promise.all(migrations.map((name) => readFile(new URL(`supabase/migrations/${name}`, root), 'utf8')));
 const allSql = sql.join('\n');
 
-assert.deepEqual([...files.html.matchAll(/data-route="([^"]+)"/g)].map((m) => m[1]).filter((value, index, array) => array.indexOf(value) === index), ['dashboard','students','staff','registrations','allocations','calendar']);
-assert.match(files.html, /Staff [Rr]egistrations/);
+assert.deepEqual([...files.html.matchAll(/data-route="([^"]+)"/g)].map((m) => m[1]).filter((value, index, array) => array.indexOf(value) === index), ['dashboard','students','staff','allocations','calendar']);
+assert.doesNotMatch(files.html, /Staff [Rr]egistrations/);
 assert.doesNotMatch(files.html, /<button[^>]+data-route="registrations"[^>]+class="nav"/);
 assert.doesNotMatch(files.html, /data-route="portalAccess"|data-page="portalAccess"|data-route="portfolio"|data-page="portfolio"/);
 assert.match(files.html, /id="profileDialog"/);
 assert.match(files.session, /school_registry_login_v2/);
+assert.match(files.session, /VERCEL_URL/);
 assert.match(files.api, /school_registry_read_v2/);
 assert.match(files.api, /school_registry_write_v2/);
+assert.match(files.api, /VERCEL_BRANCH_URL/);
 assert.match(files.signature, /staff-signatures/);
 for (const table of ['school_portfolio_catalog','school_portfolio_assignments','school_registry_capability_catalog','school_portal_access_policy','school_registry_request_outcomes']) {
   assert.match(allSql, new RegExp(`create table if not exists public\\.${table}`));

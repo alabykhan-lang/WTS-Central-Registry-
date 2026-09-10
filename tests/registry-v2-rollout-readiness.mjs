@@ -15,6 +15,7 @@ const identity = await read('supabase/migrations/20260908153000_registry_v2_iden
 const pilot = await read('supabase/migrations/20260908170000_portal_pilot_and_result_hold.sql');
 const business = await read('supabase/migrations/20260910085618_registry_business_and_departments.sql');
 const profiles = await read('supabase/migrations/20260910085719_registry_profile_tools.sql');
+const management = await read('supabase/migrations/20260910110000_registry_principal_management_and_access_templates.sql');
 const pages = await read('registry/pages.js');
 const html = await read('index.html');
 
@@ -66,6 +67,16 @@ assert.match(profiles, /PROFILE_PORTFOLIO_CREATED/);
 assert.match(profiles, /profile_only/);
 assert.match(profiles, /PORTFOLIO_SENIOR_SECONDARY_ONLY/);
 assert.doesNotMatch(profiles, /delete\s+from\s+public\.(students|school_people|staff_attendance_profiles)/i);
+assert.match(management, /\('principal','allocations\.school\.manage'\)/);
+assert.match(management, /\('principal','academic_calendar\.manage'\)/);
+assert.match(management, /\('principal','portfolio\.manage'\)/);
+assert.match(management, /school_registry_access_template_class_scopes/);
+assert.match(management, /school_registry_profile_access_template_session_api/);
+assert.match(management, /school_registry_session_entitlements_legacy/);
+assert.match(management, /school_registry_read_v2_unrestricted/);
+assert.match(management, /staff\.stage\.read/);
+assert.match(management, /allocations\.early_childhood\.manage/);
+assert.doesNotMatch(management, /delete\s+from\s+public\.students/i);
 
 assert.match(foundation, /coalesce\(pc\.metadata->>'visibility','school'\) <> 'technical_only'/);
 assert.match(foundation, /'technicalPrivileges'/);
@@ -96,6 +107,9 @@ assert.equal(new Set(contract.migrationLedger.pendingOrder).size, contract.migra
 assert.equal(contract.migrationLedger.productionApplied, true);
 assert.equal(contract.migrationLedger.productionAppliedVersions.registry_business_and_departments, '20260910085618');
 assert.equal(contract.migrationLedger.productionAppliedVersions.registry_profile_tools, '20260910085719');
+assert.equal(contract.migrationLedger.productionAppliedVersions.registry_principal_management_and_access_templates, '20260910104400');
+assert.equal(contract.migrationLedger.productionAppliedVersions.registry_profile_legacy_grant_cleanup, '20260910104600');
+assert.equal(contract.migrationLedger.productionAppliedVersions.registry_profile_template_read_fix, '20260910105134');
 for (const migration of contract.migrationLedger.pendingOrder) {
   assert.ok(names.includes(migration), `missing pending migration: ${migration}`);
   assert.ok(migration.slice(0, 14) > contract.migrationLedger.verifiedProductionHead, `pending migration is not after production head: ${migration}`);

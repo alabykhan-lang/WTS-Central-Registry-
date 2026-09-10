@@ -142,6 +142,8 @@ export async function loadStudents() {
 
 export async function loadStaff() {
   const data = await read('staff', { search: $('#staffSearch')?.value || '', status: 'active' });
+  const directory = $('#staffDirectoryCard');
+  directory?.toggleAttribute('hidden', Boolean(data.selfOnly));
   const rows = clear('#staffRows');
   const emptyNode = $('#staffEmpty');
   if (emptyNode) emptyNode.hidden = Boolean(data.staff?.length);
@@ -222,8 +224,7 @@ export async function loadAllocations() {
   allocationSnapshot = { catalog, data };
   setText('#allocationContext', `${data.current?.academic_session || '—'} · ${data.current?.term || '—'}`);
   const canManageSchool = hasCapability('allocations.school.manage');
-  const canManageEarly = hasCapability('allocations.early_childhood.manage');
-  $('#classAllocationCard')?.toggleAttribute('hidden', !canManageSchool && !canManageEarly);
+  $('#classAllocationCard')?.toggleAttribute('hidden', !canManageSchool);
   $('#subjectAllocationCard')?.toggleAttribute('hidden', !canManageSchool);
   const classSelect = $('#allocationClass');
   const subjectClass = $('#subjectClass');

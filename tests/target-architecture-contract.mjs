@@ -13,7 +13,7 @@ assert.ok(contract.removedRegistrySurfaces.includes("portfolio"));
 assert.doesNotMatch(html, /data-route="portalAccess"|data-page="portalAccess"|data-route="portfolio"|data-page="portfolio"/);
 assert.match(html, /id="profileDialog"/);
 assert.doesNotMatch(html, /data-view="registration"/);
-assert.match(html, /Registrations/);
+assert.doesNotMatch(html, /Registrations/);
 assert.ok(contract.acceptanceCriteria.length === 20);
 assert.ok(contract.preservation.studentRows === 798);
 if (foundation) {

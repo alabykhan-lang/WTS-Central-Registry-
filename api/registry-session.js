@@ -10,7 +10,11 @@ const SUPABASE_KEY = process.env.WTS_SUPABASE_SERVER_KEY
 const COOKIE_NAME = 'wts_registry_session';
 const MAX_AGE = 8 * 60 * 60;
 const DEFAULT_ORIGIN = 'https://wts-central-registry.vercel.app';
-const ALLOWED_ORIGINS = new Set([DEFAULT_ORIGIN]);
+const deploymentOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]
+  .filter(Boolean)
+  .map((value) => String(value).replace(/^https?:\/\//, '').replace(/\/$/, ''))
+  .map((value) => `https://${value}`);
+const ALLOWED_ORIGINS = new Set([DEFAULT_ORIGIN, ...deploymentOrigins]);
 const SSO_CLIENT_ID = 'central_registry';
 const REGISTRY_ORIGIN = process.env.WTS_REGISTRY_ORIGIN || DEFAULT_ORIGIN;
 const SSO_REDIRECT_URI = `${REGISTRY_ORIGIN.replace(/\/$/, '')}/`;

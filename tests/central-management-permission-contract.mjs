@@ -11,6 +11,6 @@ assert.doesNotMatch(session, /hasCentralManagementPermission/);
 assert.match(v2, /school_registry_read_v2/);
 assert.match(v2, /school_registry_write_v2/);
 assert.doesNotMatch(html, /data-route="registration"[^>]*class="nav"/);
-assert.match(html, /data-route="registrations"/);
+assert.doesNotMatch(html, /data-route="registrations"/);
 
 console.log('Central Registry all-active-staff entitlement contract passed');

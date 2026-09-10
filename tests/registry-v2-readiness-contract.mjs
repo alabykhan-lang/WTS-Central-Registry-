@@ -9,6 +9,7 @@ const config = await read('supabase/migrations/20260907220500_registry_v2_safe_c
 const reads = await read('supabase/migrations/20260907221000_registry_v2_scoped_api.sql');
 const approval = await read('supabase/migrations/20260907221500_registry_v2_registration_approval.sql');
 const sso = await read('supabase/migrations/20260907221600_registry_v2_sso.sql');
+const management = await read('supabase/migrations/20260910110000_registry_principal_management_and_access_templates.sql');
 const writes = await read('supabase/migrations/20260907222000_registry_v2_scoped_writes.sql');
 const prefect = await read('supabase/migrations/20260907222500_registry_v2_prefect_workflow.sql');
 const identity = await read('supabase/migrations/20260908153000_registry_v2_identity_consolidation.sql');
@@ -40,6 +41,10 @@ assert.match(sso, /central_registry/);
 assert.match(sso, /wts-central-registry\.vercel\.app\//);
 assert.match(sso, /v_client public\.school_sso_clients%rowtype/);
 assert.match(sso, /school_sync_person_admin_client/);
+assert.match(management, /\('principal','portfolio\.manage'\)/);
+assert.match(management, /ACCESS_TEMPLATE_INVALID/);
+assert.match(management, /technical_authority_excluded/);
+assert.match(management, /REGISTRY_CAPABILITY_DENIED/);
 assert.match(writes, /school_registry_sync_allocation_scope/);
 assert.match(writes, /school_registry_sync_class_teacher_role/);
 assert.match(writes, /ACTIVE_SUBJECT_NOT_FOUND/);

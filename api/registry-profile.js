@@ -16,7 +16,9 @@ module.exports=async function registryProfile(req,res){
   if(req.method!=='POST'){res.setHeader('Allow','POST');return send(res,405,{ok:false,code:'METHOD_NOT_ALLOWED'});}
   const current=session(req);if(!current)return send(res,401,{ok:false,code:'REGISTRY_SESSION_REQUIRED'},true);
   const input=await body(req);if(!input||typeof input!=='object')return send(res,400,{ok:false,code:'PROFILE_REQUEST_INVALID'});
-  const action=typeof input.action==='string'?input.action.trim():'';const allowed=new Set(['read','department.update','portfolio.create','portfolio.end']);if(!allowed.has(action))return send(res,400,{ok:false,code:'PROFILE_ACTION_INVALID'});
-  const result=await rpc('school_registry_profile_session_api',{p_session_id:current.id,p_session_secret:current.secret,p_action:action,p_target_type:input.targetType||null,p_target_id:input.targetId||null,p_department_code:input.departmentCode||null,p_portfolio_name:input.portfolioName||null,p_portfolio_description:input.portfolioDescription||null,p_assignment_id:input.assignmentId||null,p_request_id:input.requestId||null});
+  const action=typeof input.action==='string'?input.action.trim():'';const allowed=new Set(['read','department.update','portfolio.create','portfolio.end','portfolio.access_template']);if(!allowed.has(action))return send(res,400,{ok:false,code:'PROFILE_ACTION_INVALID'});
+  const result=action==='portfolio.access_template'
+    ? await rpc('school_registry_profile_access_template_session_api',{p_session_id:current.id,p_session_secret:current.secret,p_target_type:input.targetType||null,p_target_id:input.targetId||null,p_assignment_id:input.assignmentId||null,p_access_template_code:input.accessTemplateCode||null,p_request_id:input.requestId||null})
+    : await rpc('school_registry_profile_session_api',{p_session_id:current.id,p_session_secret:current.secret,p_action:action,p_target_type:input.targetType||null,p_target_id:input.targetId||null,p_department_code:input.departmentCode||null,p_portfolio_name:input.portfolioName||null,p_portfolio_description:input.portfolioDescription||null,p_assignment_id:input.assignmentId||null,p_request_id:input.requestId||null});
   const clear=['REGISTRY_SESSION_REQUIRED','REGISTRY_IDENTITY_NOT_ACTIVE'].includes(result?.code);return send(res,result?.ok?200:statusFor(result?.code),result,clear);
 };

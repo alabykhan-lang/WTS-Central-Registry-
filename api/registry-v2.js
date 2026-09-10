@@ -3,7 +3,11 @@
 const SUPABASE_URL = process.env.WTS_SUPABASE_URL || 'https://wuftzyeajmsxdrbwaawl.supabase.co';
 const SUPABASE_KEY = process.env.WTS_SUPABASE_SERVER_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.WTS_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZnR6eWVham1zeGRyYndhYXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjczNTgsImV4cCI6MjA4OTQ0MzM1OH0.QUeDRP1IpHCjvecqAOEZAqmMalEFlCLXylZP5D5iLog';
 const COOKIE_NAME = 'wts_registry_session';
-const ORIGINS = new Set(['https://wts-central-registry.vercel.app']);
+const deploymentOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]
+  .filter(Boolean)
+  .map((value) => String(value).replace(/^https?:\/\//, '').replace(/\/$/, ''))
+  .map((value) => `https://${value}`);
+const ORIGINS = new Set(['https://wts-central-registry.vercel.app', ...deploymentOrigins]);
 
 function send(res, status, body, clear = false) {
   res.statusCode = status;

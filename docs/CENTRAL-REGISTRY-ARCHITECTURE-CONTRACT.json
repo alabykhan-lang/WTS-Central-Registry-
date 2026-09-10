@@ -9,7 +9,7 @@
     "calendar"
   ],
   "nestedNavigation": {
-    "staff": ["registrations"]
+    "staff": []
   },
   "forbiddenPrimaryNavigation": ["registrations", "attendance", "results", "finance", "notifications", "portalAccess", "portfolio"],
   "removedRegistrySurfaces": ["portalAccess", "portfolio"],
@@ -18,7 +18,19 @@
     "staffCustomPortfolios": "management_only",
     "departmentToggle": "ss2_ss3_verified_streams",
     "portfolioAssignmentVisibility": "profile_action_only",
-    "technicalPrivilegePresentation": "technical_only"
+    "technicalPrivilegePresentation": "technical_only",
+    "staffAccessTemplates": [
+      "principal",
+      "director",
+      "vice_principal",
+      "director_primary",
+      "headmistress",
+      "assistant_headmistress",
+      "class_teacher",
+      "subject_teacher",
+      "bursar"
+    ],
+    "accessTemplateAssignment": "management_only"
   },
   "responsibilityPrinting": {
     "format": "branded_tables",
@@ -50,9 +62,9 @@
     "director": {"code": "director", "studentScope": "school", "staffScope": "school"},
     "principal": {"code": "principal", "studentScope": "school", "staffScope": "school"},
     "vice_principal": {"code": "vice_principal", "studentScope": "school", "staffScope": "school"},
-    "director_primary": {"code": "director_primary", "studentScope": "early_childhood_primary", "staffScope": "stage"},
-    "headmistress": {"code": "headmistress", "studentScope": "early_childhood", "staffScope": "stage"},
-    "assistant_headmistress": {"code": "assistant_headmistress", "studentScope": "early_childhood", "staffScope": "stage"},
+    "director_primary": {"code": "director_primary", "studentScope": "early_childhood_primary", "staffScope": "self"},
+    "headmistress": {"code": "headmistress", "studentScope": "early_childhood_primary1", "staffScope": "self"},
+    "assistant_headmistress": {"code": "assistant_headmistress", "studentScope": "early_childhood_primary1", "staffScope": "self"},
     "bursar": {"code": "bursar", "studentScope": "none", "staffScope": "self"},
     "class_teacher": {"code": "class_teacher", "studentScope": "class", "staffScope": "self"},
     "subject_teacher": {"code": "subject_teacher", "studentScope": "none", "staffScope": "self"},
@@ -101,7 +113,7 @@
     "multipleOfficesPerStudent": true
   },
   "migrationLedger": {
-    "verifiedProductionHead": "20260910085719",
+    "verifiedProductionHead": "20260910105134",
     "pendingOrder": [],
     "productionApplied": true,
     "productionAppliedVersions": {
@@ -123,7 +135,10 @@
       "direct_staff_password_access": "20260909081911",
       "registry_photo_upload": "20260909181514",
       "registry_business_and_departments": "20260910085618",
-      "registry_profile_tools": "20260910085719"
+      "registry_profile_tools": "20260910085719",
+      "registry_principal_management_and_access_templates": "20260910104400",
+      "registry_profile_legacy_grant_cleanup": "20260910104600",
+      "registry_profile_template_read_fix": "20260910105134"
     }
   },
   "stableErrorCodes": [

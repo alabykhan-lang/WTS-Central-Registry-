@@ -15,7 +15,7 @@ const [html, app, pages, client, endpoint, business, profileSql] = await Promise
 
 assert.deepEqual(
   [...html.matchAll(/data-route="([^"]+)"/g)].map((match) => match[1]),
-  ['dashboard', 'students', 'staff', 'registrations', 'allocations', 'calendar'],
+  ['dashboard', 'students', 'staff', 'allocations', 'calendar'],
 );
 assert.doesNotMatch(html, /data-page="portalAccess"|data-page="portfolio"|data-route="portalAccess"|data-route="portfolio"/);
 assert.doesNotMatch(app, /loadPortalAccess|loadPortfolio|selectedPersonId/);
