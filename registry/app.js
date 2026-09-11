@@ -56,20 +56,17 @@ async function beginSso(){
   if(window.__WTS_CENTRAL_SSO_PENDING)return;
   window.__WTS_CENTRAL_SSO_PENDING=true;
   setSsoPending('Opening Staff Portal…','Connecting to your secure school session.');
-  const verifier=randomToken();const stateToken=randomToken();const nonce=randomToken();const challenge=await codeChallenge(verifier);
-  saveSsoTransaction({verifier,state:stateToken,nonce,expires_at:Date.now()+5*60*1000});
-  const authorize=new URL(`${SSO_PORTAL_ORIGIN}/api/sso/authorize`);
-  authorize.searchParams.set('response_type','code');authorize.searchParams.set('client_id',SSO_CLIENT_ID);authorize.searchParams.set('redirect_uri',SSO_REDIRECT_URI);authorize.searchParams.set('scope','central_registry');authorize.searchParams.set('code_challenge',challenge);authorize.searchParams.set('code_challenge_method','S256');authorize.searchParams.set('state',stateToken);authorize.searchParams.set('nonce',nonce);
-  window.location.assign(authorize.toString());
+  const result=await sessionRequest({action:'sso_begin',portal_origin:SSO_PORTAL_ORIGIN});
+  if(!result?.authorize_url)throw Object.assign(new Error('SSO_BEGIN_FAILED'),{code:'SSO_BEGIN_FAILED'});
+  window.location.assign(result.authorize_url);
 }
 async function exchangeSsoCallback(){
   const query=new URLSearchParams(window.location.search);const returnedError=query.get('error') || query.get('code_error');
   if(returnedError)throw Object.assign(new Error(returnedError),{code:returnedError});
   const code=query.get('code');const returnedState=query.get('state');const returnedNonce=query.get('nonce');
   if(!code && !returnedState && !returnedNonce)return null;
-  const transaction=loadSsoTransaction();
-  if(!code || !returnedState || !returnedNonce || !transaction || returnedState!==transaction.state || returnedNonce!==transaction.nonce){clearSsoTransaction();throw Object.assign(new Error('SSO_CALLBACK_INVALID'),{code:'SSO_CALLBACK_INVALID'});}
-  const result=await sessionRequest({action:'sso_exchange',grant_type:'authorization_code',client_id:SSO_CLIENT_ID,redirect_uri:SSO_REDIRECT_URI,code,state:returnedState,nonce:returnedNonce,code_verifier:transaction.verifier});
+  if(!code || !returnedState || !returnedNonce){clearSsoTransaction();throw Object.assign(new Error('SSO_CALLBACK_INVALID'),{code:'SSO_CALLBACK_INVALID'});}
+  const result=await sessionRequest({action:'sso_exchange',grant_type:'authorization_code',client_id:SSO_CLIENT_ID,redirect_uri:SSO_REDIRECT_URI,code,state:returnedState,nonce:returnedNonce});
   clearSsoTransaction();window.history.replaceState({},document.title,`${window.location.pathname}${window.location.hash}`);return result;
 }
 

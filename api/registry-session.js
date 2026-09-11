@@ -1,5 +1,7 @@
 'use strict';
 
+const crypto = require('node:crypto');
+
 const SUPABASE_URL = process.env.WTS_SUPABASE_URL || 'https://wuftzyeajmsxdrbwaawl.supabase.co';
 const SUPABASE_KEY = process.env.WTS_SUPABASE_SERVER_KEY
   || process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -18,6 +20,8 @@ const ALLOWED_ORIGINS = new Set([DEFAULT_ORIGIN, ...deploymentOrigins]);
 const SSO_CLIENT_ID = 'central_registry';
 const REGISTRY_ORIGIN = process.env.WTS_REGISTRY_ORIGIN || DEFAULT_ORIGIN;
 const SSO_REDIRECT_URI = `${REGISTRY_ORIGIN.replace(/\/$/, '')}/`;
+const SSO_TRANSACTION_COOKIE = 'wts_registry_sso_transaction';
+const SSO_TRANSACTION_MAX_AGE = 5 * 60;
 
 function send(res, status, payload, cookie) {
   res.statusCode = status;
@@ -59,6 +63,30 @@ function clearCookie() {
 
 function sessionCookie(id, secret) {
   return `${COOKIE_NAME}=${encodeURIComponent(`${id}.${secret}`)}; Path=/; Max-Age=${MAX_AGE}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function transactionCookie(value, maxAge = SSO_TRANSACTION_MAX_AGE) {
+  return `${SSO_TRANSACTION_COOKIE}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function clearTransactionCookie() {
+  return transactionCookie('', 0);
+}
+
+function readTransaction(req) {
+  const value = cookies(req)[SSO_TRANSACTION_COOKIE];
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    if (!parsed || parsed.expires_at < Date.now()) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function combinedCookies(...values) {
+  return values.filter(Boolean);
 }
 
 function safeToken(value, min, max) {
@@ -136,20 +164,42 @@ module.exports = async function registrySession(req, res) {
     const result = await rpc('school_identity_change_password', { p_login: login, p_current_password: currentPassword, p_new_password: newPassword });
     return send(res, result?.ok ? 200 : rpcStatus(result, 400), result, result?.ok ? clearCookie() : undefined);
   }
+  if (input.action === 'sso_begin') {
+    const verifier = crypto.randomBytes(48).toString('base64url');
+    const state = crypto.randomBytes(24).toString('base64url');
+    const nonce = crypto.randomBytes(24).toString('base64url');
+    const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+    const portalOriginInput = typeof input.portal_origin === 'string' ? input.portal_origin : '';
+    const portalOrigin = /^https:\/\/(?:portal\.waytosuccessschools\.com|wts-school-platform(?:-[a-z0-9-]+)?\.vercel\.app)$/.test(portalOriginInput)
+      ? portalOriginInput
+      : 'https://wts-school-platform.vercel.app';
+    const authorize = new URL('/api/sso/authorize', portalOrigin);
+    authorize.searchParams.set('response_type', 'code');
+    authorize.searchParams.set('client_id', SSO_CLIENT_ID);
+    authorize.searchParams.set('redirect_uri', SSO_REDIRECT_URI);
+    authorize.searchParams.set('scope', 'central_registry');
+    authorize.searchParams.set('code_challenge', challenge);
+    authorize.searchParams.set('code_challenge_method', 'S256');
+    authorize.searchParams.set('state', state);
+    authorize.searchParams.set('nonce', nonce);
+    const transaction = Buffer.from(JSON.stringify({ verifier, state, nonce, expires_at: Date.now() + (SSO_TRANSACTION_MAX_AGE * 1000) })).toString('base64url');
+    return send(res, 200, { ok: true, authorize_url: authorize.toString() }, transactionCookie(transaction));
+  }
   if (input.action === 'sso_exchange') {
     const grantType = typeof input.grant_type === 'string' ? input.grant_type : '';
     const clientId = typeof input.client_id === 'string' ? input.client_id : '';
     const redirectUri = typeof input.redirect_uri === 'string' ? input.redirect_uri : '';
     const code = typeof input.code === 'string' ? input.code : '';
-    const verifier = typeof input.code_verifier === 'string' ? input.code_verifier : '';
+    const transaction = readTransaction(req);
+    const verifier = transaction?.verifier || (typeof input.code_verifier === 'string' ? input.code_verifier : '');
     const state = typeof input.state === 'string' ? input.state : '';
     const nonce = typeof input.nonce === 'string' ? input.nonce : '';
-    if (grantType !== 'authorization_code' || clientId !== SSO_CLIENT_ID || redirectUri !== SSO_REDIRECT_URI || !safeToken(code, 43, 512) || !safeToken(verifier, 43, 128) || !safeToken(state, 16, 512) || !safeToken(nonce, 16, 512)) return send(res, 400, { ok: false, code: 'SSO_REQUEST_INVALID' }, clearCookie());
+    if (grantType !== 'authorization_code' || clientId !== SSO_CLIENT_ID || redirectUri !== SSO_REDIRECT_URI || !safeToken(code, 43, 512) || !safeToken(verifier, 43, 128) || !safeToken(state, 16, 512) || !safeToken(nonce, 16, 512) || (transaction && (state !== transaction.state || nonce !== transaction.nonce))) return send(res, 400, { ok: false, code: 'SSO_REQUEST_INVALID' }, combinedCookies(clearCookie(), clearTransactionCookie()));
     const exchanged = await rpc('school_sso_authorization_code_exchange', { p_code: code, p_client_id: clientId, p_redirect_uri: redirectUri, p_code_verifier: verifier, p_state: state, p_nonce: nonce });
-    if (!exchanged?.ok || !exchanged.session_id || !exchanged.session_secret) return send(res, rpcStatus(exchanged, 401), exchanged || { ok: false, code: 'CENTRAL_SSO_EXCHANGE_FAILED' }, clearCookie());
+    if (!exchanged?.ok || !exchanged.session_id || !exchanged.session_secret) return send(res, rpcStatus(exchanged, 401), exchanged || { ok: false, code: 'CENTRAL_SSO_EXCHANGE_FAILED' }, combinedCookies(clearCookie(), clearTransactionCookie()));
     const context = await rpc('school_registry_session_context_v2', { p_session_id: exchanged.session_id, p_session_secret: exchanged.session_secret });
     if (!context?.ok) return send(res, rpcStatus(context, 403), context, clearCookie());
-    return send(res, 200, { ...publicSessionResult(exchanged), context }, sessionCookie(exchanged.session_id, exchanged.session_secret));
+    return send(res, 200, { ...publicSessionResult(exchanged), context }, combinedCookies(sessionCookie(exchanged.session_id, exchanged.session_secret), clearTransactionCookie()));
   }
   if (input.action !== 'login') return send(res, 400, { ok: false, code: 'REGISTRY_SESSION_ACTION_REQUIRED' }, clearCookie());
   const login = typeof input.login === 'string' ? input.login.trim() : '';
