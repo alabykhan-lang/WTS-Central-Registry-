@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1f3a">
   <title>Way to Success Standard Schools · Central Registry</title>
+  <script>
+    try {
+      const query = new URLSearchParams(window.location.search);
+      if (query.get('sso') === '1' || query.has('code') || query.has('state') || query.has('error')) {
+        document.documentElement.classList.add('sso-requested');
+      }
+    } catch {}
+  </script>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/registry-v2.css">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -20,6 +28,12 @@
       <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required></label>
       <button class="primary" type="submit">Open Central Registry</button>
       <div class="auth-error" id="authError" role="alert" aria-live="polite"></div>
+      <div class="sso-pending-panel" id="ssoPendingPanel" role="status" aria-live="polite">
+        <i aria-hidden="true"></i>
+        <strong id="ssoPendingTitle">Opening Staff Portal…</strong>
+        <span id="ssoPendingMessage">Connecting to your secure school session.</span>
+        <a id="ssoReturnLink" href="https://wts-school-platform.vercel.app/workspace" hidden>Return to Staff Portal</a>
+      </div>
       <div class="auth-recovery-links"><a href="/activate.html">Forgot or set password</a><a id="ssoLink" href="?sso=1">Continue from School Portal</a></div>
       <section class="staff-registration-cta"><div class="staff-registration-topline"><span class="staff-registration-badge">NEW STAFF</span><span class="staff-registration-status">Management-approved access</span></div><h2>Joining the school team?</h2><p>Submit your staff details for review. Access is created only after approval.</p><a class="staff-registration-button" href="/register.html">Start staff registration</a></section>
     </form>
