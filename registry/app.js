@@ -59,6 +59,9 @@ async function beginSso(){
   setSsoPending('Opening Staff Portal…','Connecting to your secure school session.');
   const result=await sessionRequest({action:'sso_begin',portal_origin:SSO_PORTAL_ORIGIN});
   if(!result?.authorize_url)throw Object.assign(new Error('SSO_BEGIN_FAILED'),{code:'SSO_BEGIN_FAILED'});
+  if(result.transaction?.verifier&&result.transaction?.state&&result.transaction?.nonce){
+    saveSsoTransaction(result.transaction);
+  }
   window.location.assign(result.authorize_url);
 }
 async function exchangeSsoCallback(){
@@ -67,7 +70,8 @@ async function exchangeSsoCallback(){
   const code=query.get('code');const returnedState=query.get('state');const returnedNonce=query.get('nonce');
   if(!code && !returnedState && !returnedNonce)return null;
   if(!code || !returnedState || !returnedNonce){clearSsoTransaction();throw Object.assign(new Error('SSO_CALLBACK_INVALID'),{code:'SSO_CALLBACK_INVALID'});}
-  const result=await sessionRequest({action:'sso_exchange',grant_type:'authorization_code',client_id:SSO_CLIENT_ID,redirect_uri:SSO_REDIRECT_URI,code,state:returnedState,nonce:returnedNonce});
+  const transaction=loadSsoTransaction();
+  const result=await sessionRequest({action:'sso_exchange',grant_type:'authorization_code',client_id:SSO_CLIENT_ID,redirect_uri:SSO_REDIRECT_URI,code,code_verifier:transaction?.verifier || '',state:returnedState,nonce:returnedNonce});
   clearSsoTransaction();window.history.replaceState({},document.title,`${window.location.pathname}${window.location.hash}`);return result;
 }
 

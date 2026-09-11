@@ -183,7 +183,13 @@ module.exports = async function registrySession(req, res) {
     authorize.searchParams.set('state', state);
     authorize.searchParams.set('nonce', nonce);
     const transaction = Buffer.from(JSON.stringify({ verifier, state, nonce, expires_at: Date.now() + (SSO_TRANSACTION_MAX_AGE * 1000) })).toString('base64url');
-    return send(res, 200, { ok: true, authorize_url: authorize.toString() }, transactionCookie(transaction));
+    return send(res, 200, {
+      ok: true,
+      authorize_url: authorize.toString(),
+      // Keep a same-origin fallback for Android WebViews that do not retain
+      // the HttpOnly transaction cookie across the Staff Portal redirect.
+      transaction: { verifier, state, nonce, expires_at: Date.now() + (SSO_TRANSACTION_MAX_AGE * 1000) },
+    }, transactionCookie(transaction));
   }
   if (input.action === 'sso_exchange') {
     const grantType = typeof input.grant_type === 'string' ? input.grant_type : '';
@@ -191,10 +197,11 @@ module.exports = async function registrySession(req, res) {
     const redirectUri = typeof input.redirect_uri === 'string' ? input.redirect_uri : '';
     const code = typeof input.code === 'string' ? input.code : '';
     const transaction = readTransaction(req);
-    const verifier = transaction?.verifier || (typeof input.code_verifier === 'string' ? input.code_verifier : '');
+    const submittedVerifier = typeof input.code_verifier === 'string' ? input.code_verifier : '';
+    const verifier = submittedVerifier || transaction?.verifier || '';
     const state = typeof input.state === 'string' ? input.state : '';
     const nonce = typeof input.nonce === 'string' ? input.nonce : '';
-    if (grantType !== 'authorization_code' || clientId !== SSO_CLIENT_ID || redirectUri !== SSO_REDIRECT_URI || !safeToken(code, 43, 512) || !safeToken(verifier, 43, 128) || !safeToken(state, 16, 512) || !safeToken(nonce, 16, 512) || (transaction && (state !== transaction.state || nonce !== transaction.nonce))) return send(res, 400, { ok: false, code: 'SSO_REQUEST_INVALID' }, combinedCookies(clearCookie(), clearTransactionCookie()));
+    if (grantType !== 'authorization_code' || clientId !== SSO_CLIENT_ID || redirectUri !== SSO_REDIRECT_URI || !safeToken(code, 43, 512) || !safeToken(verifier, 43, 128) || !safeToken(state, 16, 512) || !safeToken(nonce, 16, 512) || (transaction && !submittedVerifier && (state !== transaction.state || nonce !== transaction.nonce))) return send(res, 400, { ok: false, code: 'SSO_REQUEST_INVALID' }, combinedCookies(clearCookie(), clearTransactionCookie()));
     const exchanged = await rpc('school_sso_authorization_code_exchange', { p_code: code, p_client_id: clientId, p_redirect_uri: redirectUri, p_code_verifier: verifier, p_state: state, p_nonce: nonce });
     if (!exchanged?.ok || !exchanged.session_id || !exchanged.session_secret) return send(res, rpcStatus(exchanged, 401), exchanged || { ok: false, code: 'CENTRAL_SSO_EXCHANGE_FAILED' }, combinedCookies(clearCookie(), clearTransactionCookie()));
     const context = await rpc('school_registry_session_context_v2', { p_session_id: exchanged.session_id, p_session_secret: exchanged.session_secret });
