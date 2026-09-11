@@ -11,7 +11,18 @@ let activeProfile=null;
 
 const SSO_TRANSACTION_KEY='wts_central_registry_pkce_transaction';
 const SSO_CLIENT_ID='central_registry';
-const SSO_PORTAL_ORIGIN=String(window.WTS_PORTAL_ORIGIN || 'https://wts-school-platform.vercel.app').replace(/\/$/,'');
+const DEFAULT_SSO_PORTAL_ORIGIN='https://wts-school-platform.vercel.app';
+function trustedPortalOrigin(value){
+  try{
+    const parsed=new URL(String(value || DEFAULT_SSO_PORTAL_ORIGIN));
+    const host=parsed.hostname.toLowerCase();
+    const approved=parsed.protocol==='https:' && (host==='portal.waytosuccessschools.com' || host==='wts-school-platform.vercel.app' || /^wts-school-platform-[a-z0-9-]+\.vercel\.app$/.test(host));
+    return approved?parsed.origin:DEFAULT_SSO_PORTAL_ORIGIN;
+  }catch{return DEFAULT_SSO_PORTAL_ORIGIN;}
+}
+let requestedPortalOrigin='';
+try{requestedPortalOrigin=new URLSearchParams(window.location.search).get('portal_origin') || '';}catch{}
+const SSO_PORTAL_ORIGIN=trustedPortalOrigin(requestedPortalOrigin || window.WTS_CONFIG?.portalOrigin || window.WTS_PORTAL_ORIGIN);
 const SSO_REGISTRY_ORIGIN=String(window.WTS_REGISTRY_ORIGIN || 'https://wts-central-registry.vercel.app').replace(/\/$/,'');
 const SSO_REDIRECT_URI=`${SSO_REGISTRY_ORIGIN}/`;
 
