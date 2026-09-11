@@ -10,6 +10,7 @@ let pendingAllocationEnd=null;
 let activeProfile=null;
 
 const SSO_TRANSACTION_KEY='wts_central_registry_pkce_transaction';
+const SSO_RECOVERY_KEY='wts_central_registry_sso_recovery';
 const SSO_CLIENT_ID='central_registry';
 const DEFAULT_SSO_PORTAL_ORIGIN='https://wts-school-platform.vercel.app';
 function trustedPortalOrigin(value){
@@ -68,6 +69,21 @@ async function exchangeSsoCallback(){
   if(!code || !returnedState || !returnedNonce){clearSsoTransaction();throw Object.assign(new Error('SSO_CALLBACK_INVALID'),{code:'SSO_CALLBACK_INVALID'});}
   const result=await sessionRequest({action:'sso_exchange',grant_type:'authorization_code',client_id:SSO_CLIENT_ID,redirect_uri:SSO_REDIRECT_URI,code,state:returnedState,nonce:returnedNonce});
   clearSsoTransaction();window.history.replaceState({},document.title,`${window.location.pathname}${window.location.hash}`);return result;
+}
+
+function canRecoverSso(error){
+  const code=error?.code||error?.message||'';
+  return ['SSO_REQUEST_INVALID','SSO_PKCE_INVALID','SSO_STATE_OR_NONCE_INVALID'].includes(code);
+}
+function recoverSsoOnce(){
+  try{
+    if(sessionStorage.getItem(SSO_RECOVERY_KEY)==='1')return false;
+    sessionStorage.setItem(SSO_RECOVERY_KEY,'1');
+    window.history.replaceState({},document.title,window.location.pathname);
+    window.__WTS_CENTRAL_SSO_PENDING=false;
+    beginSso().catch(showSsoFailure);
+    return true;
+  }catch{return false;}
 }
 
 function showError(error) { const code=error?.code || error?.message || 'REGISTRY_REQUEST_FAILED'; toast(code,'error'); if (error?.status===401) lock(); }
@@ -163,10 +179,10 @@ async function bootstrap(){
   if(requested)setSsoPending('Opening Staff Portal…','Connecting to your secure school session.');
   try{
     const exchanged=await exchangeSsoCallback();
-    if(exchanged?.ok){applyContext(exchanged.context || await getSession());await loadRoute('dashboard',true);return;}
+    if(exchanged?.ok){try{sessionStorage.removeItem(SSO_RECOVERY_KEY);}catch{}applyContext(exchanged.context || await getSession());await loadRoute('dashboard',true);return;}
     try{const context=await getSession();applyContext(context);await loadRoute('dashboard',true);return;}catch{/* no Registry cookie yet */}
     lock();
     if(new URLSearchParams(window.location.search).get('sso')==='1')await beginSso();
-  }catch(error){clearSsoTransaction();if(requested){showSsoFailure(error);}else{$('#authError').textContent=error.code || error.message || 'SSO sign-in failed';lock();}}
+  }catch(error){clearSsoTransaction();if(requested){if(canRecoverSso(error)&&recoverSsoOnce())return;showSsoFailure(error);}else{$('#authError').textContent=error.code || error.message || 'SSO sign-in failed';lock();}}
 }
 bootstrap();
