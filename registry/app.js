@@ -48,7 +48,19 @@ function setSsoPending(title='Opening Staff Portal…',message='Connecting to yo
 }
 function showSsoFailure(error){
   const code=error?.code||error?.message||'SSO_HANDOFF_FAILED';
-  setSsoPending('Could not open Central Registry','The secure Staff Portal handoff did not complete. Return to Staff Portal and open the module again.');
+  const messages={
+    SSO_REQUEST_INVALID:'The secure sign-in request was invalid. Return to Staff Portal and open Central Registry again.',
+    SSO_CLIENT_OR_REDIRECT_INVALID:'Central Registry is not currently registered with the Staff Portal. Please try again later.',
+    SSO_CODE_INVALID:'The secure sign-in response expired. Return to Staff Portal and open Central Registry again.',
+    SSO_CODE_EXPIRED:'The secure sign-in response expired. Return to Staff Portal and open Central Registry again.',
+    SSO_PKCE_INVALID:'The secure sign-in response could not be verified. Return to Staff Portal and open Central Registry again.',
+    SSO_STATE_OR_NONCE_INVALID:'The secure sign-in response could not be verified. Return to Staff Portal and open Central Registry again.',
+    REGISTRY_ACCESS_NOT_GRANTED:'This account does not have authorised Central Registry access.',
+    REGISTRY_IDENTITY_NOT_ACTIVE:'This staff identity is not active for Central Registry.',
+    PORTAL_OPERATING_MODE_RESTRICTED:'Central Registry is temporarily unavailable under the current operating policy.',
+    IDENTITY_SERVICE_UNAVAILABLE:'The identity service is temporarily unavailable. Please try again later.'
+  };
+  setSsoPending('Could not open Central Registry',messages[code]||'The secure Staff Portal handoff did not complete. Return to Staff Portal and open the module again.');
   const panel=$('#ssoPendingPanel');if(panel)panel.classList.add('is-error');
   const returnLink=$('#ssoReturnLink');if(returnLink){returnLink.href=`${SSO_PORTAL_ORIGIN}/workspace`;returnLink.hidden=false;}
   console.warn('Central Registry SSO handoff failed',code);
