@@ -274,7 +274,7 @@ export function renderSelectedResponsibilities(classKey) {
   if (!classKey || !allocationSnapshot) {
     if (target) {
       target.className = 'responsibility-sheet-placeholder';
-      target.innerHTML = '<img src="/public-school-logo.webp" alt=""><p>Select a secondary-school class to view its current responsibilities.</p>';
+      target.innerHTML = '<img src="/public-school-logo.webp" alt=""><p>Select a class to view its current responsibilities.</p>';
     }
     return;
   }
@@ -293,7 +293,9 @@ export function renderSelectedResponsibilities(classKey) {
   const canManage = hasCapability('allocations.school.manage');
   target.className = 'official-responsibility-sheet';
   target.dataset.classKey = classKey;
-  target.innerHTML = `<header><img src="/public-school-logo.webp" alt="School logo"><div><small>WAY TO SUCCESS STANDARD SCHOOLS · EJIGBO</small><h2>${esc(className)} Responsibilities</h2><p>${esc(current.academic_session || '')} · ${esc(current.term || '')}</p></div></header><section data-print-section="class"><h3>Class responsibilities</h3><table class="responsibility-table"><thead><tr><th>Responsibility</th><th>Assigned staff</th></tr></thead><tbody>${classRows}</tbody></table></section><section data-print-section="subjects"><h3>Subject teachers</h3><table class="responsibility-table"><thead><tr><th>Subject</th><th>Assigned teacher</th></tr></thead><tbody>${subjectRows}</tbody></table></section>`;
+  const classObj = (catalog.classes || []).find(c => c.class_key === classKey);
+    const isSecondary = classObj && classObj.stage_code === 'secondary';
+    target.innerHTML = `<header><img src="/public-school-logo.webp" alt="School logo"><div><small>WAY TO SUCCESS STANDARD SCHOOLS · EJIGBO</small><h2>${esc(className)} Responsibilities</h2><p>${esc(current.academic_session || '')} · ${esc(current.term || '')}</p></div></header><section data-print-section="class"><h3>Class responsibilities</h3><table class="responsibility-table"><thead><tr><th>Responsibility</th><th>Assigned staff</th></tr></thead><tbody>${classRows}</tbody></table></section>${isSecondary ? `<section data-print-section="subjects"><h3>Subject teachers</h3><table class="responsibility-table"><thead><tr><th>Subject</th><th>Assigned teacher</th></tr></thead><tbody>${subjectRows}</tbody></table></section>` : ''}`;
   if (canManage) {
     const controls = document.createElement('div');
     controls.className = 'responsibility-admin-actions no-print';
@@ -328,7 +330,17 @@ export async function loadCalendar() {
     warning?.append(node);
   });
   const terms = clear('#calendarTerms');
-  (data.terms || []).forEach((term) => terms?.append(row(`${term.academic_session} · ${term.term_name}`, `${term.term_status}${term.is_current ? ' · current' : ''}`)));
+  const pastSessions = new Set();
+    (data.terms || []).forEach((term) => {
+      if (term.is_current || term.academic_session === data.current?.academic_session) {
+        terms?.append(row(`${term.academic_session} � ${term.term_name}`, `${term.term_status}${term.is_current ? ' � current' : ''}`));
+      } else {
+        if (!pastSessions.has(term.academic_session)) {
+          pastSessions.add(term.academic_session);
+          terms?.append(row(`${term.academic_session}`, 'closed'));
+        }
+      }
+    });
   const current = data.current || {};
   $('#sourceSession').value = current.academic_session || '';
   $('#targetSession').value = current.academic_session ? current.academic_session.replace(/^(\d{4})\/(\d{4})$/, (_, a, b) => `${Number(a) + 1}/${Number(b) + 1}`) : '';
