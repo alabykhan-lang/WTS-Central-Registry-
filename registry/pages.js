@@ -97,6 +97,7 @@ export async function loadStudents() {
   if (!data.students?.length) empty(rows, 'No students found in your permitted scope.');
   data.students.forEach((student) => {
     const node = document.createElement('tr');
+    if (hasCapability('portfolio.manage')) { node.className = 'clickable-row'; node.dataset.staffAction = 'profile'; node.dataset.staffId = staff.staff_id || staff.id; node.title = 'Open profile'; }
     const person = document.createElement('td');
     const wrap = document.createElement('div');
     wrap.className = 'person-cell';
@@ -147,6 +148,7 @@ export async function loadStaff() {
   const rows = clear('#staffRows');
   const emptyNode = $('#staffEmpty');
   if (emptyNode) emptyNode.hidden = Boolean(data.staff?.length);
+  setText('#staffCount', `${(data.staff || []).length} staff member(s) — tap to expand or collapse`);
   if (!data.staff?.length) empty(rows, 'No staff records in your permitted scope.');
   data.staff.forEach((staff) => {
     const node = document.createElement('tr');
@@ -224,24 +226,7 @@ export async function loadAllocations() {
   allocationSnapshot = { catalog, data };
   setText('#allocationContext', `${data.current?.academic_session || '—'} · ${data.current?.term || '—'}`);
   const canManageSchool = hasCapability('allocations.school.manage');
-  $('#classAllocationCard')?.toggleAttribute('hidden', !canManageSchool);
-  $('#subjectAllocationCard')?.toggleAttribute('hidden', !canManageSchool);
-  const classSelect = $('#allocationClass');
-  const subjectClass = $('#subjectClass');
-  const staffSelect = $('#allocationStaff');
-  const subjectStaff = $('#subjectStaff');
-  const fill = (select, items, placeholder, fn) => {
-    if (!select) return;
-    const value = select.value;
-    select.replaceChildren(new Option(placeholder, ''));
-    items.forEach((item) => select.append(new Option(fn(item), item.class_key || item.id)));
-    select.value = value;
-  };
-  fill(classSelect, catalog.classes || [], 'Choose class', (item) => item.display_name || labelClass(item.class_key));
-  fill(subjectClass, catalog.classes || [], 'Choose class', (item) => item.display_name || labelClass(item.class_key));
-  const staffs = catalog.staff || [];
-  [staffSelect, subjectStaff].forEach((select) => fill(select, staffs, 'Choose staff', (item) => `${item.full_name} · ${item.staff_number || ''}`));
-  renderSubjects(catalog.subjects || [], subjectClass?.value);
+  
   const reportSelect = $('#responsibilityClass');
   if (reportSelect && reportSelect.options.length <= 1) (catalog.classes || []).filter((item) => item.is_active !== false).forEach((item) => reportSelect.append(new Option(item.display_name || labelClass(item.class_key), item.class_key)));
   renderSelectedResponsibilities(reportSelect?.value || '');
@@ -321,7 +306,11 @@ export function printResponsibilities(type) {
 
 export async function loadCalendar() {
   const data = await read('calendar');
-  setText('#calendarCurrent', `${data.current?.academic_session || '—'} · ${data.current?.term || '—'}`);
+  const current = data.current || {};
+  const session = current.academic_session || '';
+  const currentTerm = current.term || '';
+  const canManage = hasCapability('academic_calendar.manage');
+  setText('#calendarCurrent', `${session || '\u2014'} \u00b7 ${currentTerm || '\u2014'}`);
   const warning = clear('#calendarWarnings');
   (data.configurationWarnings || []).forEach((item) => {
     const node = document.createElement('div');
@@ -329,22 +318,68 @@ export async function loadCalendar() {
     node.textContent = item.message;
     warning?.append(node);
   });
-  const terms = clear('#calendarTerms');
-  const pastSessions = new Set();
-    (data.terms || []).forEach((term) => {
-      if (term.is_current || term.academic_session === data.current?.academic_session) {
-        terms?.append(row(`${term.academic_session} � ${term.term_name}`, `${term.term_status}${term.is_current ? ' � current' : ''}`));
-      } else {
-        if (!pastSessions.has(term.academic_session)) {
-          pastSessions.add(term.academic_session);
-          terms?.append(row(`${term.academic_session}`, 'closed'));
-        }
-      }
-    });
-  const current = data.current || {};
-  $('#sourceSession').value = current.academic_session || '';
-  $('#targetSession').value = current.academic_session ? current.academic_session.replace(/^(\d{4})\/(\d{4})$/, (_, a, b) => `${Number(a) + 1}/${Number(b) + 1}`) : '';
-  if (!hasCapability('academic_calendar.manage')) $('#transitionCard')?.setAttribute('hidden', 'hidden');
+
+  const termNames = ['1st Term', '2nd Term', '3rd Term'];
+  const rows = data.terms || [];
+  const doTransition = async (payload, question) => {
+    if (!window.confirm(question)) return;
+    try {
+      await window.RegistryApp.write('calendar.transition', { ...payload, reason: 'Approved handover', confirmed: true });
+    } catch (error) { /* write() already reports the error */ }
+  };
+
+  // Current session with its terms
+  const currentTitle = $('#currentSessionTitle');
+  if (currentTitle) currentTitle.textContent = session ? `${session} (current session)` : 'Current session';
+  const termList = clear('#calendarCurrentTerms');
+  termNames.forEach((name, index) => {
+    const found = rows.find((t) => t.academic_session === session && t.term_name === name);
+    const isCurrent = name === currentTerm;
+    const status = found ? found.term_status : 'not started';
+    const actions = [];
+    if (canManage && isCurrent && index < termNames.length - 1) {
+      const next = termNames[index + 1];
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'primary';
+      button.textContent = `Carry forward to ${next}`;
+      button.onclick = () => doTransition(
+        { sourceSession: session, sourceTerm: name, targetSession: session, targetTerm: next },
+        `Carry ${session} ${name} forward to ${next}?`
+      );
+      actions.push(button);
+    }
+    termList?.append(row(name, `${status}${isCurrent ? ' \u00b7 current' : ''}`, actions));
+  });
+
+  // Separate move to next session
+  const nextSession = session ? session.replace(/^(\d{4})\/(\d{4})$/, (_, a, b) => `${Number(a) + 1}/${Number(b) + 1}`) : '';
+  const moveText = $('#sessionMoveText');
+  if (moveText) moveText.textContent = nextSession ? `Start ${nextSession} (1st Term) when ${session} is complete.` : '';
+  const moveAction = clear('#sessionMoveAction');
+  const moveCard = $('#transitionCard');
+  if (moveCard) moveCard.hidden = !canManage || !nextSession;
+  if (canManage && nextSession && moveAction) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'primary';
+    button.textContent = `Move forward to ${nextSession}`;
+    button.onclick = () => doTransition(
+      { sourceSession: session, sourceTerm: currentTerm || '3rd Term', targetSession: nextSession, targetTerm: '1st Term' },
+      `Close ${session} and move forward to ${nextSession}?`
+    );
+    moveAction.append(button);
+  }
+
+  // Past sessions: sessions only, no terms
+  const past = clear('#calendarTerms');
+  const seen = new Set();
+  rows.forEach((term) => {
+    if (term.academic_session === session || seen.has(term.academic_session)) return;
+    seen.add(term.academic_session);
+  });
+  [...seen].sort().reverse().forEach((name) => past?.append(row(name, 'closed')));
+  if (!seen.size && past) past.textContent = 'No past sessions yet.';
 }
 
 export function invalidate(action) {

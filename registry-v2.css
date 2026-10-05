@@ -28,3 +28,15 @@ html.sso-requested body.locked #loginForm > .auth-error,
 html.sso-requested body.locked #loginForm > .auth-recovery-links,
 html.sso-requested body.locked #loginForm > .staff-registration-cta { display: none; }
 @keyframes registrySsoSpin { to { transform: rotate(360deg); } }
+
+/* directory-v3 */
+.staff-layout{grid-template-columns:1fr!important}
+#staffDirectoryCard{width:100%;max-width:none}
+.directory-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;list-style:none}
+.directory-summary::-webkit-details-marker{display:none}
+.directory-summary .chev{font-size:1.5rem;color:var(--wts-green,#0f7c5c);transition:transform .2s}
+#staffDirectoryDetails[open] .directory-summary .chev{transform:rotate(180deg)}
+#staffDirectoryDetails .filters{margin:14px 0}
+#staffDirectoryDetails .table-wrap{overflow-x:auto}
+#staffRows tr.clickable-row{cursor:pointer}
+#staffRows tr.clickable-row:hover{background:#f3f8fb}

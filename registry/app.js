@@ -155,7 +155,7 @@ function renderProfileDialog(){
   
     if(!senior && type==='student')html+='<div class="empty profile-info-note">Custom student portfolios are available only for Senior Secondary (SS1-SS3) profiles.</div>';
     
-    if(type === 'staff') {
+    if(type === 'staff' && hasCapability('allocations.school.manage')) {
       html += '<section class="profile-section"><div class="section-head"><div><p class="panelEyebrow">DUTIES</p><h3>Assign class & subjects</h3></div></div><form id="profileClassAllocationForm" class="form-grid profile-custom-form"><label>Class<select id="profileAllocationClass" required></select></label><label>Responsibility<select id="profileAllocationResponsibility"><option value="class_teacher">Main class teacher</option><option value="assistant_class_teacher">Assistant teacher</option></select></label><button class="primary" type="submit">Assign class responsibility</button></form><form id="profileSubjectAllocationForm" class="form-grid profile-custom-form"><label>Class<select id="profileSubjectClass" required></select></label><fieldset class="full" id="profileSubjectChoicesFieldset" hidden><legend>Subjects</legend><div id="profileSubjectChoices" class="check-grid"></div></fieldset><button class="primary" type="submit">Assign subject responsibilities</button></form></section>';
     }
     
@@ -165,7 +165,7 @@ function renderProfileDialog(){
   
     const list=$('#profilePortfolioList');
     
-    if(type === 'staff') {
+    if(type === 'staff' && hasCapability('allocations.school.manage')) {
       const currentTargetId = activeProfile.targetId;
       registryRequest('read','catalog',{}).then(catalog => {
         const classes = catalog.classes || [];
@@ -250,10 +250,10 @@ $('#sidebarBackdrop')?.addEventListener('click',()=>{document.body.classList.rem
 document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&document.body.classList.contains('nav-open')){document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');}});
 $('#studentSearchButton').addEventListener('click',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentStatus').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentClass').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentRows').addEventListener('click',handleStudentAction);$('#newStudentButton').addEventListener('click',()=>openStudentDialog());
 $('#selfProfileForm').addEventListener('submit',async(event)=>{event.preventDefault();const payload={phone:$('#selfPhone').value.trim(),whatsappNumber:$('#selfWhatsapp').value.trim(),address:$('#selfAddress').value.trim(),emergencyContact:$('#selfEmergency').value.trim()};await write('profile.self.update',payload);});$('#selfPhotoFile').addEventListener('change',(event)=>handleSelfPhoto(event.target.files?.[0]));$('#signatureFile').addEventListener('change',(event)=>handleSignature(event.target.files?.[0]));$('#staffSearchButton').addEventListener('click',()=>{pages.invalidate('staff');pages.loadStaff().catch(showError);});
-$('#allocationRefresh').addEventListener('click',()=>{pages.invalidate('catalog');pages.invalidate('allocations');pages.loadAllocations().catch(showError);});$('#subjectClass').addEventListener('change',async()=>{const data=await registryRequest('read','catalog',{});pages.renderSubjects(data.subjects||[],$('#subjectClass').value);});
-$('#classAllocationForm').addEventListener('submit',async(event)=>{event.preventDefault();await write('allocations.class.set',{classKey:$('#allocationClass').value,staffId:$('#allocationStaff').value,responsibility:$('#allocationResponsibility').value,reason:'Assigned through Central Registry'}); toast('Class responsibility saved successfully', 'success'); event.target.reset(); pages.invalidate('allocations'); pages.loadAllocations().catch(showError); });$('#subjectAllocationForm').addEventListener('submit',async(event)=>{event.preventDefault();const subjectIndexes=$$('#subjectChoices input:checked').map((input)=>Number(input.value));await write('allocations.subject.set',{classKey:$('#subjectClass').value,staffId:$('#subjectStaff').value,subjectIndexes,reason:'Assigned through Central Registry'}); toast('Subject responsibilities saved successfully', 'success'); event.target.reset(); pages.invalidate('allocations'); pages.loadAllocations().catch(showError); });
+$('#allocationRefresh').addEventListener('click',()=>{pages.invalidate('catalog');pages.invalidate('allocations');pages.loadAllocations().catch(showError);});
+,
 $('#responsibilityClass').addEventListener('change',(event)=>pages.renderSelectedResponsibilities(event.target.value));$('#printClassResponsibilities').addEventListener('click',()=>pages.printResponsibilities('class'));$('#printSubjectResponsibilities').addEventListener('click',()=>pages.printResponsibilities('subjects'));
-$('#staffRows').addEventListener('click',handleStaffAction);$('#profileDialogClose').addEventListener('click',()=>{activeProfile=null;$('#profileDialog').close();});$('#calendarRefresh').addEventListener('click',()=>{pages.invalidate('calendar');pages.loadCalendar().catch(showError);});$('#transitionForm').addEventListener('submit',async(event)=>{event.preventDefault();const result=await write('calendar.transition',{sourceSession:$('#sourceSession').value.trim(),sourceTerm:$('#sourceTerm').value,targetSession:$('#targetSession').value.trim(),targetTerm:$('#targetTerm').value,reason:'Approved handover',confirmed:$('#transitionConfirm').checked});});
+$('#staffRows').addEventListener('click',handleStaffAction);$('#profileDialogClose').addEventListener('click',()=>{activeProfile=null;$('#profileDialog').close();});$('#calendarRefresh').addEventListener('click',()=>{pages.invalidate('calendar');pages.loadCalendar().catch(showError);});
 
 window.RegistryApp={write,loadRoute,reviewRegistration,endAllocation,openProfileDialog,async openStudentClass(classKey){await loadRoute('students');const select=$('#studentClass');select.value=classKey;pages.invalidate('students');await pages.loadStudents();}};
 async function bootstrap(){
