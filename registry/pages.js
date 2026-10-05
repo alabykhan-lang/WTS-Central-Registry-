@@ -243,12 +243,13 @@ export async function loadAllocations() {
   [staffSelect, subjectStaff].forEach((select) => fill(select, staffs, 'Choose staff', (item) => `${item.full_name} · ${item.staff_number || ''}`));
   renderSubjects(catalog.subjects || [], subjectClass?.value);
   const reportSelect = $('#responsibilityClass');
-  if (reportSelect && reportSelect.options.length <= 1) (catalog.classes || []).filter((item) => item.stage_code === 'secondary' && item.is_active !== false).forEach((item) => reportSelect.append(new Option(item.display_name || labelClass(item.class_key), item.class_key)));
+  if (reportSelect && reportSelect.options.length <= 1) (catalog.classes || []).filter((item) => item.is_active !== false).forEach((item) => reportSelect.append(new Option(item.display_name || labelClass(item.class_key), item.class_key)));
   renderSelectedResponsibilities(reportSelect?.value || '');
 }
 
 export function renderSubjects(subjects, classKey) {
   const node = clear('#subjectChoices');
+  if ($('#subjectChoicesFieldset')) $('#subjectChoicesFieldset').hidden = !classKey;
   const filtered = subjects.filter((item) => !classKey || item.class_key === classKey);
   if (!filtered.length) {
     empty(node, 'Choose a class to see its active subjects.');
@@ -337,3 +338,4 @@ export async function loadCalendar() {
 export function invalidate(action) {
   for (const key of state.cache.keys()) if (key.startsWith(`${action}:`)) state.cache.delete(key);
 }
+
