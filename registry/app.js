@@ -153,9 +153,72 @@ function renderProfileDialog(){
   if(departmentEligible)html+=`<section class="profile-section"><div class="section-head"><div><p class="panelEyebrow">ACADEMIC STREAM</p><h3>Department</h3><p class="muted small">Select the senior-secondary department for this student.</p></div></div><form id="profileDepartmentForm" class="inline-form"><label>Department<select id="profileDepartment" required><option value="">Select department</option><option value="arts">Arts</option><option value="science">Science</option><option value="business">Business</option></select></label><button class="primary" type="submit">Save department</button></form></section>`;
   if(canManage && (type==='staff' || senior))html+=`<section class="profile-section"><div class="section-head"><div><p class="panelEyebrow">MANAGEMENT ONLY</p><h3>Custom portfolios</h3><p class="muted small">Create a school portfolio attached to this profile. A visible name never grants access by itself; choose an approved access template when a staff member needs a defined school scope.</p></div></div><div id="profilePortfolioList" class="profile-portfolio-list"></div><form id="profileCustomPortfolioForm" class="form-grid profile-custom-form"><label>Portfolio name<input id="profileCustomPortfolioName" maxlength="120" required placeholder="e.g. Examination Coordinator"></label><label class="full">Description<textarea id="profileCustomPortfolioDescription" maxlength="500" rows="3" placeholder="Optional management description"></textarea></label>${type==='staff'?`<label class="full">Access template<select id="profileCustomPortfolioTemplate">${accessTemplateOptions()}</select><small class="muted">Templates are limited to approved school roles; technical authority is never assignable here.</small></label>`:''}<button class="primary" type="submit">Create custom portfolio</button></form></section>`;
   if(!senior && type==='student')html+=`<div class="empty profile-info-note">Custom student portfolios are available only for Senior Secondary (SS1–SS3) profiles.</div>`;
-  target.innerHTML=html;
+  
+    if(type === 'staff') {
+      html += '<section class="profile-section"><div class="section-head"><div><p class="panelEyebrow">DUTIES</p><h3>Assign class & subjects</h3></div></div><form id="profileClassAllocationForm" class="form-grid profile-custom-form"><label>Class<select id="profileAllocationClass" required></select></label><label>Responsibility<select id="profileAllocationResponsibility"><option value="class_teacher">Main class teacher</option><option value="assistant_class_teacher">Assistant teacher</option></select></label><button class="primary" type="submit">Assign class responsibility</button></form><form id="profileSubjectAllocationForm" class="form-grid profile-custom-form"><label>Class<select id="profileSubjectClass" required></select></label><fieldset class="full" id="profileSubjectChoicesFieldset" hidden><legend>Subjects</legend><div id="profileSubjectChoices" class="check-grid"></div></fieldset><button class="primary" type="submit">Assign subject responsibilities</button></form></section>';
+    }
+    target.innerHTML=html;
+
   if(departmentEligible){$('#profileDepartment').value=profileDepartment(profile.class_key,profile.department_code);$('#profileDepartmentForm').onsubmit=async(event)=>{event.preventDefault();const targetId=activeProfile.targetId;try{await profileRequest({action:'department.update',targetType:'student',targetId,departmentCode:$('#profileDepartment').value,requestId:requestId()});toast('Department updated','success');resetCache();await openProfileDialog('student',targetId);}catch(error){showError(error);}};}
-  const list=$('#profilePortfolioList');if(list){const assignments=activeProfile.portfolios||[];if(!assignments.length){list.innerHTML='<div class="empty profile-info-note">No portfolio has been created for this profile.</div>';}else assignments.forEach((item)=>{const custom=item.custom===true || item.metadata?.custom===true;const active=item.assignment_status==='active';const actions=[];if(custom&&active&&type==='staff'){const templateWrap=document.createElement('label');templateWrap.className='profile-template-control';templateWrap.textContent='Access';const template=document.createElement('select');template.innerHTML=accessTemplateOptions(item.access_template_code || '');templateWrap.append(template);const apply=document.createElement('button');apply.type='button';apply.className='ghost';apply.textContent='Apply';apply.onclick=async()=>{try{await profileRequest({action:'portfolio.access_template',targetType:'staff',targetId:activeProfile.targetId,assignmentId:item.assignment_id,accessTemplateCode:template.value,requestId:requestId()});toast('Access template updated','success');resetCache();await openProfileDialog('staff',activeProfile.targetId);}catch(error){showError(error);}};const templateActions=document.createElement('div');templateActions.className='profile-template-actions';templateActions.append(templateWrap,apply);actions.push(templateActions);}if(custom&&active){const remove=document.createElement('button');remove.type='button';remove.className='ghost danger';remove.textContent='Remove';remove.onclick=async()=>{const targetId=activeProfile.targetId;try{await profileRequest({action:'portfolio.end',targetType:type,targetId,assignmentId:item.assignment_id,requestId:requestId()});toast('Portfolio removed','success');resetCache();await openProfileDialog(type,targetId);}catch(error){showError(error);}};actions.push(remove);}const templateDetail=item.access_template_code ? ` · access ${accessTemplateLabel(item.access_template_code)}` : '';list.appendChild(profileRow(`${profilePortfolioName(item)}${custom?' · Custom':''}`,`${item.description || `${item.assignment_status || 'active'} · ${item.academic_session || 'current'}`}${templateDetail}`,actions));});}
+  
+    if(type === 'staff') {
+      const data = activeProfile.portfolios || []; // Wait, we need the catalog for classes. It's stored in window.state maybe? We can fetch it.
+      registryRequest('read','catalog',{}).then(catalog => {
+        const classes = catalog.classes || [];
+        const classSelect = document.getElementById('profileAllocationClass');
+        const subjectClass = document.getElementById('profileSubjectClass');
+        if(classSelect && subjectClass) {
+          classSelect.innerHTML = '<option value="">Choose class</option>';
+          subjectClass.innerHTML = '<option value="">Choose class</option>';
+          classes.filter(c => c.is_active !== false).forEach(c => {
+             classSelect.add(new Option(c.display_name || c.class_key, c.class_key));
+             subjectClass.add(new Option(c.display_name || c.class_key, c.class_key));
+          });
+          
+          subjectClass.addEventListener('change', () => {
+             const subjects = catalog.subjects || [];
+             const val = subjectClass.value;
+             const isSec = classes.find(c => c.class_key === val)?.stage_code === 'secondary';
+             const fieldset = document.getElementById('profileSubjectChoicesFieldset');
+             const node = document.getElementById('profileSubjectChoices');
+             if(fieldset) fieldset.hidden = !val || !isSec;
+             if(node) {
+               node.innerHTML = '';
+               if(val && isSec) {
+                 subjects.filter(s => s.class_key === val).forEach(s => {
+                   const lbl = document.createElement('label');
+                   const inp = document.createElement('input');
+                   inp.type = 'checkbox';
+                   inp.value = s.subject_index;
+                   lbl.append(inp, document.createTextNode(s.subject_name));
+                   node.append(lbl);
+                 });
+               }
+             }
+          });
+        }
+      });
+
+      document.getElementById('profileClassAllocationForm')?.addEventListener('submit', async(event) => {
+        event.preventDefault();
+        try {
+          await write('allocations.class.set', { classKey: document.getElementById('profileAllocationClass').value, staffId: targetId, responsibility: document.getElementById('profileAllocationResponsibility').value, reason: 'Assigned via Profile' });
+          toast('Class responsibility assigned', 'success');
+          event.target.reset();
+        } catch(e) { showError(e); }
+      });
+      document.getElementById('profileSubjectAllocationForm')?.addEventListener('submit', async(event) => {
+        event.preventDefault();
+        try {
+          const subjectIndexes = Array.from(document.querySelectorAll('#profileSubjectChoices input:checked')).map(i => Number(i.value));
+          await write('allocations.subject.set', { classKey: document.getElementById('profileSubjectClass').value, staffId: targetId, subjectIndexes, reason: 'Assigned via Profile' });
+          toast('Subject responsibilities assigned', 'success');
+          event.target.reset();
+        } catch(e) { showError(e); }
+      });
+    }
+
+    const list=$('#profilePortfolioList');if(list){const assignments=activeProfile.portfolios||[];if(!assignments.length){list.innerHTML='<div class="empty profile-info-note">No portfolio has been created for this profile.</div>';}else assignments.forEach((item)=>{const custom=item.custom===true || item.metadata?.custom===true;const active=item.assignment_status==='active';const actions=[];if(custom&&active&&type==='staff'){const templateWrap=document.createElement('label');templateWrap.className='profile-template-control';templateWrap.textContent='Access';const template=document.createElement('select');template.innerHTML=accessTemplateOptions(item.access_template_code || '');templateWrap.append(template);const apply=document.createElement('button');apply.type='button';apply.className='ghost';apply.textContent='Apply';apply.onclick=async()=>{try{await profileRequest({action:'portfolio.access_template',targetType:'staff',targetId:activeProfile.targetId,assignmentId:item.assignment_id,accessTemplateCode:template.value,requestId:requestId()});toast('Access template updated','success');resetCache();await openProfileDialog('staff',activeProfile.targetId);}catch(error){showError(error);}};const templateActions=document.createElement('div');templateActions.className='profile-template-actions';templateActions.append(templateWrap,apply);actions.push(templateActions);}if(custom&&active){const remove=document.createElement('button');remove.type='button';remove.className='ghost danger';remove.textContent='Remove';remove.onclick=async()=>{const targetId=activeProfile.targetId;try{await profileRequest({action:'portfolio.end',targetType:type,targetId,assignmentId:item.assignment_id,requestId:requestId()});toast('Portfolio removed','success');resetCache();await openProfileDialog(type,targetId);}catch(error){showError(error);}};actions.push(remove);}const templateDetail=item.access_template_code ? ` · access ${accessTemplateLabel(item.access_template_code)}` : '';list.appendChild(profileRow(`${profilePortfolioName(item)}${custom?' · Custom':''}`,`${item.description || `${item.assignment_status || 'active'} · ${item.academic_session || 'current'}`}${templateDetail}`,actions));});}
   $('#profileCustomPortfolioForm')?.addEventListener('submit',async(event)=>{event.preventDefault();const targetId=activeProfile.targetId;const name=$('#profileCustomPortfolioName').value.trim();const description=$('#profileCustomPortfolioDescription').value.trim();const template=$('#profileCustomPortfolioTemplate')?.value || '';try{const result=await profileRequest({action:'portfolio.create',targetType:type,targetId,portfolioName:name,portfolioDescription:description,requestId:requestId()});if(type==='staff'&&result.assignmentId){await profileRequest({action:'portfolio.access_template',targetType:'staff',targetId,assignmentId:result.assignmentId,accessTemplateCode:template,requestId:requestId()});}toast('Custom portfolio created','success');resetCache();await openProfileDialog(type,targetId);}catch(error){showError(error);}});
 }
 async function openProfileDialog(targetType,targetId){const result=await profileRequest({action:'read',targetType,targetId});activeProfile={targetType,targetId,profile:result.profile || {},portfolios:result.portfolios || []};renderProfileDialog();const dialog=$('#profileDialog');if(dialog&&!dialog.open)dialog.showModal();}
@@ -171,7 +234,7 @@ function reviewRegistration(registration,action){
 function endAllocation(item,type){
   const dialog=$('#allocationEndDialog');const form=$('#allocationEndForm');const error=$('#allocationEndError');
   if(!dialog||!form)return;
-  pendingAllocationEnd={item,type}; error.textContent=''; $('#allocationEndIntro').textContent=`${item.class_name || item.class_key || 'Allocation'} · ${item.subject_name || item.responsibility?.replaceAll('_',' ') || item.full_name || ''}`; $('#allocationEndReason').value='Allocation ended through Central Registry';
+  pendingAllocationEnd={item,type}; error.textContent=''; $('#allocationEndIntro').textContent=`${item.class_name || item.class_key || 'Allocation'} · ${item.subject_name || item.responsibility?.replaceAll('_',' ') || item.full_name || ''}`; if($('#allocationEndReason')) $('#allocationEndReason').value='Allocation ended through Central Registry';
   form.onsubmit=async(event)=>{if(event.submitter?.value === 'cancel') { dialog.close(); return; } event.preventDefault(); const reason = $('#allocationEndReason')?.value?.trim() || 'Allocation ended through Central Registry'; try{await write(type,{allocationId:pendingAllocationEnd.item.id,reason});pendingAllocationEnd=null;dialog.close();}catch(result){error.textContent=result.code || result.message;}};dialog.showModal();
 }
 
@@ -203,4 +266,5 @@ async function bootstrap(){
   }catch(error){clearSsoTransaction();if(requested){if(canRecoverSso(error)&&recoverSsoOnce())return;showSsoFailure(error);}else{$('#authError').textContent=error.code || error.message || 'SSO sign-in failed';lock();}}
 }
 bootstrap();
+
 
