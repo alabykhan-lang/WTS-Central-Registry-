@@ -28,35 +28,6 @@ BEGIN
   FROM public.school_sso_session_validate(p_session_id, p_session_secret, 'result.score.write');
 
   IF v_failure_code IS NOT NULL THEN
-    INSERT INTO public.school_result_score_audit(
-      request_id, actor_person_id, staff_id, student_id, class_key,
-      subject_index, academic_session, term, component, action_type,
-      source_application, success, failure_code
-    ) VALUES (
-      v_request_id, v_person_id, v_staff_id, p_student_id, p_class_key,
-      p_subject_index, p_academic_session, p_term, 'score_record',
-      'score_write_rejected', 'result_portal', false, v_failure_code
-    );
-
-    INSERT INTO public.school_registry_audit(
-      actor_type, actor_id, action, entity_type, entity_id, request_id,
-      details
-    ) VALUES (
-      'result_session', v_person_id::text, 'result.score.write_failed',
-      'scores', p_student_id::text, v_request_id,
-      jsonb_build_object(
-        'staff_id', v_staff_id,
-        'person_id', v_person_id,
-        'class_key', p_class_key,
-        'subject_index', p_subject_index,
-        'academic_session', p_academic_session,
-        'term', p_term,
-        'source_application', 'result_portal',
-        'success', false,
-        'failure_code', v_failure_code
-      )
-    );
-
     RETURN jsonb_build_object(
       'ok', false,
       'code', v_failure_code,
@@ -74,74 +45,35 @@ BEGIN
     AND s.term = trim(p_term)
   FOR UPDATE;
 
-  BEGIN
-    IF p_ca1 IS NULL AND p_ca2 IS NULL AND p_ca3 IS NULL AND p_exam IS NULL THEN
-      DELETE FROM public.scores
-      WHERE student_id = p_student_id
-        AND class_key = trim(p_class_key)
-        AND subject_index = p_subject_index
-        AND academic_session = trim(p_academic_session)
-        AND term = trim(p_term)
-      RETURNING id INTO v_score_id;
-      v_after := NULL;
-    ELSE
-      INSERT INTO public.scores(
-        student_id, class_key, subject_index, academic_session, term, ca1, ca2, ca3, exam
-      ) VALUES (
-        p_student_id, trim(p_class_key), p_subject_index, trim(p_academic_session), trim(p_term),
-        p_ca1, p_ca2, p_ca3, p_exam
-      )
-      ON CONFLICT (student_id, class_key, subject_index, academic_session, term) DO UPDATE
-      SET class_key = EXCLUDED.class_key,
-          ca1 = EXCLUDED.ca1,
-          ca2 = EXCLUDED.ca2,
-          ca3 = EXCLUDED.ca3,
-          exam = EXCLUDED.exam
-      RETURNING id INTO v_score_id;
-
-      SELECT to_jsonb(s)
-        INTO v_after
-      FROM public.scores s
-      WHERE s.id = v_score_id;
-    END IF;
-  EXCEPTION WHEN OTHERS THEN
-    INSERT INTO public.school_result_score_audit(
-      request_id, actor_person_id, staff_id, student_id, class_key,
-      subject_index, academic_session, term, component, action_type,
-      old_record, source_application, success, failure_code
+  IF p_ca1 IS NULL AND p_ca2 IS NULL AND p_ca3 IS NULL AND p_exam IS NULL THEN
+    DELETE FROM public.scores
+    WHERE student_id = p_student_id
+      AND class_key = trim(p_class_key)
+      AND subject_index = p_subject_index
+      AND academic_session = trim(p_academic_session)
+      AND term = trim(p_term)
+    RETURNING id INTO v_score_id;
+    v_after := NULL;
+  ELSE
+    INSERT INTO public.scores(
+      student_id, class_key, subject_index, academic_session, term, ca1, ca2, ca3, exam
     ) VALUES (
-      v_request_id, v_person_id, v_staff_id, p_student_id, p_class_key,
-      p_subject_index, p_academic_session, p_term, 'score_record',
-      'score_write_failed', v_before, 'result_portal', false,
-      'RESULT_SCORE_SAVE_FAILED'
-    );
+      p_student_id, trim(p_class_key), p_subject_index, trim(p_academic_session), trim(p_term),
+      p_ca1, p_ca2, p_ca3, p_exam
+    )
+    ON CONFLICT (student_id, class_key, subject_index, academic_session, term) DO UPDATE
+    SET class_key = EXCLUDED.class_key,
+        ca1 = EXCLUDED.ca1,
+        ca2 = EXCLUDED.ca2,
+        ca3 = EXCLUDED.ca3,
+        exam = EXCLUDED.exam
+    RETURNING id INTO v_score_id;
 
-    INSERT INTO public.school_registry_audit(
-      actor_type, actor_id, action, entity_type, entity_id, request_id,
-      before_data, details
-    ) VALUES (
-      'result_session', v_person_id::text, 'result.score.write_failed',
-      'scores', coalesce(v_score_id, p_student_id)::text, v_request_id,
-      v_before,
-      jsonb_build_object(
-        'staff_id', v_staff_id,
-        'person_id', v_person_id,
-        'class_key', p_class_key,
-        'subject_index', p_subject_index,
-        'academic_session', p_academic_session,
-        'term', p_term,
-        'source_application', 'result_portal',
-        'success', false,
-        'failure_code', 'RESULT_SCORE_SAVE_FAILED'
-      )
-    );
-
-    RETURN jsonb_build_object(
-      'ok', false,
-      'code', 'RESULT_SCORE_SAVE_FAILED',
-      'request_id', v_request_id
-    );
-  END;
+    SELECT to_jsonb(s)
+      INTO v_after
+    FROM public.scores s
+    WHERE s.id = v_score_id;
+  END IF;
 
   v_action_type := CASE
     WHEN v_before IS NULL THEN 'score_entry'
@@ -217,12 +149,6 @@ BEGIN
       'ca3', v_after -> 'ca3',
       'exam', v_after -> 'exam'
     )
-  );
-EXCEPTION WHEN OTHERS THEN
-  RETURN jsonb_build_object(
-    'ok', false,
-    'code', 'RESULT_SCORE_SAVE_FAILED',
-    'request_id', v_request_id
   );
 END;
 $$;
