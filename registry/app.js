@@ -251,7 +251,6 @@ document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&document.
 $('#studentSearchButton').addEventListener('click',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentStatus').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentClass').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentRows').addEventListener('click',handleStudentAction);$('#newStudentButton').addEventListener('click',()=>openStudentDialog());
 $('#selfProfileForm').addEventListener('submit',async(event)=>{event.preventDefault();const payload={phone:$('#selfPhone').value.trim(),whatsappNumber:$('#selfWhatsapp').value.trim(),address:$('#selfAddress').value.trim(),emergencyContact:$('#selfEmergency').value.trim()};await write('profile.self.update',payload);});$('#selfPhotoFile').addEventListener('change',(event)=>handleSelfPhoto(event.target.files?.[0]));$('#signatureFile').addEventListener('change',(event)=>handleSignature(event.target.files?.[0]));$('#staffSearchButton').addEventListener('click',()=>{pages.invalidate('staff');pages.loadStaff().catch(showError);});
 $('#allocationRefresh').addEventListener('click',()=>{pages.invalidate('catalog');pages.invalidate('allocations');pages.loadAllocations().catch(showError);});
-,
 $('#responsibilityClass').addEventListener('change',(event)=>pages.renderSelectedResponsibilities(event.target.value));$('#printClassResponsibilities').addEventListener('click',()=>pages.printResponsibilities('class'));$('#printSubjectResponsibilities').addEventListener('click',()=>pages.printResponsibilities('subjects'));
 $('#staffRows').addEventListener('click',handleStaffAction);$('#profileDialogClose').addEventListener('click',()=>{activeProfile=null;$('#profileDialog').close();});$('#calendarRefresh').addEventListener('click',()=>{pages.invalidate('calendar');pages.loadCalendar().catch(showError);});
 
@@ -268,4 +267,6 @@ async function bootstrap(){
   }catch(error){clearSsoTransaction();if(requested){if(canRecoverSso(error)&&recoverSsoOnce())return;showSsoFailure(error);}else{$('#authError').textContent=error.code || error.message || 'SSO sign-in failed';lock();}}
 }
 bootstrap();
+
+
 
