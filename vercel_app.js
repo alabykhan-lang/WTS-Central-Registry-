@@ -1,0 +1,271 @@
+'use strict';
+
+import { sessionRequest, getSession, registryRequest, uploadSignature, uploadPhoto, profileRequest } from './api-client.js';
+import { state, resetCache, hasCapability, scopeText } from './state.js';
+import { $, $$, esc, requestId, toast } from './format.js';
+import * as pages from './pages.js';
+
+const titles={dashboard:'Dashboard',students:'Students',staff:'Staff',allocations:'Class / Subject Allocation',calendar:'Academic Calendar'};
+let pendingAllocationEnd=null;
+let activeProfile=null;
+
+const SSO_TRANSACTION_KEY='wts_central_registry_pkce_transaction';
+const SSO_RECOVERY_KEY='wts_central_registry_sso_recovery';
+const SSO_CLIENT_ID='central_registry';
+const DEFAULT_SSO_PORTAL_ORIGIN='https://wts-school-platform.vercel.app';
+function trustedPortalOrigin(value){
+  try{
+    const parsed=new URL(String(value || DEFAULT_SSO_PORTAL_ORIGIN));
+    const host=parsed.hostname.toLowerCase();
+    const approved=parsed.protocol==='https:' && (host==='portal.waytosuccessschools.com' || host==='wts-school-platform.vercel.app' || /^wts-school-platform-[a-z0-9-]+\.vercel\.app$/.test(host));
+    return approved?parsed.origin:DEFAULT_SSO_PORTAL_ORIGIN;
+  }catch{return DEFAULT_SSO_PORTAL_ORIGIN;}
+}
+let requestedPortalOrigin='';
+try{requestedPortalOrigin=new URLSearchParams(window.location.search).get('portal_origin') || '';}catch{}
+const SSO_PORTAL_ORIGIN=trustedPortalOrigin(requestedPortalOrigin || window.WTS_CONFIG?.portalOrigin || window.WTS_PORTAL_ORIGIN);
+const SSO_REGISTRY_ORIGIN=String(window.WTS_REGISTRY_ORIGIN || 'https://wts-central-registry.vercel.app').replace(/\/$/,'');
+const SSO_REDIRECT_URI=`${SSO_REGISTRY_ORIGIN}/`;
+
+function base64Url(bytes){let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+function randomToken(){const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);return base64Url(bytes);}
+async function codeChallenge(verifier){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier));return base64Url(new Uint8Array(digest));}
+function ssoCookieGet(key){try{const prefix=encodeURIComponent(key)+'=';const part=document.cookie.split('; ').find((item)=>item.indexOf(prefix)===0);return part?decodeURIComponent(part.slice(prefix.length)):'';}catch{return '';}}
+function ssoCookieSet(key,value){try{document.cookie=`${encodeURIComponent(key)}=${encodeURIComponent(value)}; Max-Age=300; Path=/; Secure; SameSite=Lax`;}catch{}}
+function ssoCookieRemove(key){try{document.cookie=`${encodeURIComponent(key)}=; Max-Age=0; Path=/; Secure; SameSite=Lax`;}catch{}}
+function ssoStoreGet(key){try{const value=sessionStorage.getItem(key);if(value)return value;}catch{}return ssoCookieGet(key);}
+function ssoStoreSet(key,value){try{sessionStorage.setItem(key,value);}catch{}ssoCookieSet(key,value);}
+function ssoStoreRemove(key){try{sessionStorage.removeItem(key);}catch{}ssoCookieRemove(key);}
+function saveSsoTransaction(transaction){ssoStoreSet(SSO_TRANSACTION_KEY,JSON.stringify(transaction));}
+function loadSsoTransaction(){try{const transaction=JSON.parse(ssoStoreGet(SSO_TRANSACTION_KEY) || 'null');if(transaction && transaction.verifier && transaction.state && transaction.nonce && Number(transaction.expires_at)>Date.now())return transaction;}catch{}return null;}
+function clearSsoTransaction(){ssoStoreRemove(SSO_TRANSACTION_KEY);}
+function ssoRequested(){try{const query=new URLSearchParams(window.location.search);return query.get('sso')==='1'||query.has('code')||query.has('state')||query.has('error');}catch{return false;}}
+function setSsoPending(title='Opening Staff Portal…',message='Connecting to your secure school session.'){
+  document.documentElement.classList.add('sso-requested');
+  const titleNode=$('#ssoPendingTitle');const messageNode=$('#ssoPendingMessage');const returnLink=$('#ssoReturnLink');
+  const panel=$('#ssoPendingPanel');if(panel)panel.classList.remove('is-error');
+  if(titleNode)titleNode.textContent=title;if(messageNode)messageNode.textContent=message;if(returnLink)returnLink.hidden=true;
+}
+function showSsoFailure(error){
+  const code=error?.code||error?.message||'SSO_HANDOFF_FAILED';
+  const messages={
+    SSO_REQUEST_INVALID:'The secure sign-in request was invalid. Return to Staff Portal and open Central Registry again.',
+    SSO_CLIENT_OR_REDIRECT_INVALID:'Central Registry is not currently registered with the Staff Portal. Please try again later.',
+    SSO_CODE_INVALID:'The secure sign-in response expired. Return to Staff Portal and open Central Registry again.',
+    SSO_CODE_EXPIRED:'The secure sign-in response expired. Return to Staff Portal and open Central Registry again.',
+    SSO_PKCE_INVALID:'The secure sign-in response could not be verified. Return to Staff Portal and open Central Registry again.',
+    SSO_STATE_OR_NONCE_INVALID:'The secure sign-in response could not be verified. Return to Staff Portal and open Central Registry again.',
+    REGISTRY_ACCESS_NOT_GRANTED:'This account does not have authorised Central Registry access.',
+    REGISTRY_IDENTITY_NOT_ACTIVE:'This staff identity is not active for Central Registry.',
+    PORTAL_OPERATING_MODE_RESTRICTED:'Central Registry is temporarily unavailable under the current operating policy.',
+    IDENTITY_SERVICE_UNAVAILABLE:'The identity service is temporarily unavailable. Please try again later.'
+  };
+  setSsoPending('Could not open Central Registry',messages[code]||'The secure Staff Portal handoff did not complete. Return to Staff Portal and open the module again.');
+  const panel=$('#ssoPendingPanel');if(panel)panel.classList.add('is-error');
+  const returnLink=$('#ssoReturnLink');if(returnLink){returnLink.href=`${SSO_PORTAL_ORIGIN}/workspace`;returnLink.hidden=false;}
+  console.warn('Central Registry SSO handoff failed',code);
+}
+async function beginSso(){
+  if(window.__WTS_CENTRAL_SSO_PENDING)return;
+  window.__WTS_CENTRAL_SSO_PENDING=true;
+  setSsoPending('Opening Staff Portal…','Connecting to your secure school session.');
+  const result=await sessionRequest({action:'sso_begin',portal_origin:SSO_PORTAL_ORIGIN});
+  if(!result?.authorize_url)throw Object.assign(new Error('SSO_BEGIN_FAILED'),{code:'SSO_BEGIN_FAILED'});
+  if(result.transaction?.verifier&&result.transaction?.state&&result.transaction?.nonce){
+    saveSsoTransaction(result.transaction);
+  }
+  window.location.assign(result.authorize_url);
+}
+async function exchangeSsoCallback(){
+  const query=new URLSearchParams(window.location.search);const returnedError=query.get('error') || query.get('code_error');
+  if(returnedError)throw Object.assign(new Error(returnedError),{code:returnedError});
+  const code=query.get('code');const returnedState=query.get('state');const returnedNonce=query.get('nonce');
+  if(!code && !returnedState && !returnedNonce)return null;
+  if(!code || !returnedState || !returnedNonce){clearSsoTransaction();throw Object.assign(new Error('SSO_CALLBACK_INVALID'),{code:'SSO_CALLBACK_INVALID'});}
+  const transaction=loadSsoTransaction();
+  const result=await sessionRequest({action:'sso_exchange',grant_type:'authorization_code',client_id:SSO_CLIENT_ID,redirect_uri:SSO_REDIRECT_URI,code,code_verifier:transaction?.verifier || '',state:returnedState,nonce:returnedNonce});
+  clearSsoTransaction();window.history.replaceState({},document.title,`${window.location.pathname}${window.location.hash}`);return result;
+}
+
+function canRecoverSso(error){
+  const code=error?.code||error?.message||'';
+  return ['SSO_REQUEST_INVALID','SSO_PKCE_INVALID','SSO_STATE_OR_NONCE_INVALID'].includes(code);
+}
+function recoverSsoOnce(){
+  try{
+    if(sessionStorage.getItem(SSO_RECOVERY_KEY)==='1')return false;
+    sessionStorage.setItem(SSO_RECOVERY_KEY,'1');
+    window.history.replaceState({},document.title,window.location.pathname);
+    window.__WTS_CENTRAL_SSO_PENDING=false;
+    beginSso().catch(showSsoFailure);
+    return true;
+  }catch{return false;}
+}
+
+function showError(error) { const code=error?.code || error?.message || 'REGISTRY_REQUEST_FAILED'; toast(code,'error'); if (error?.status===401) lock(); }
+function lock() { state.context=null; activeProfile=null; resetCache(); document.body.classList.remove('nav-open'); $('#sidebarToggle')?.setAttribute('aria-expanded','false'); document.body.classList.add('locked'); $('#registryShell').hidden=true; $('#authGate').hidden=false; $('#loginPassword').value=''; if(!document.documentElement.classList.contains('sso-requested'))$('#loginName').focus(); }
+function applyContext(context) { document.documentElement.classList.remove('sso-requested'); state.context=context; document.body.classList.remove('locked'); $('#authGate').hidden=true; $('#registryShell').hidden=false; $('#actorLine').textContent=`${context.actor?.fullName || 'Staff'} · ${context.actor?.staffNumber || ''} · ${scopeText()}`; $('#scopeNotice').textContent=scopeText(); $('#scopeNotice').hidden=false; configureNav(); }
+function configureNav() { const show=(route,yes)=>{const node=document.querySelector(`[data-route="${route}"]`);if(node)node.hidden=!yes;}; show('students',hasCapability('students.school.read')||hasCapability('students.stage.read')||hasCapability('students.class.read')); show('staff',true); show('allocations',hasCapability('allocations.school.manage')); show('calendar',hasCapability('academic_calendar.manage')); }
+async function loadRoute(route,force=false) { state.route=route; $$('.registry-page').forEach((page)=>page.classList.toggle('active',page.dataset.page===route)); $$('.registry-sidebar [data-route]').forEach((button)=>button.classList.toggle('active',button.dataset.route===route)); $('#pageTitle').textContent=titles[route] || 'Central Registry'; if(force) resetCache(); try { if(route==='dashboard') await pages.loadDashboard(); else if(route==='students') await pages.loadStudents(); else if(route==='staff') await pages.loadStaff(); else if(route==='allocations') await pages.loadAllocations(); else if(route==='calendar') await pages.loadCalendar(); } catch(error){showError(error);} }
+async function loadContext() { const context=await getSession(); applyContext(context); await loadRoute(state.route || 'dashboard',true); }
+async function write(action,payload={}) { try { const result=await registryRequest('write',action,{...payload,requestId:payload.requestId || requestId()}); toast(result.code || 'Saved','success'); resetCache(); await loadContext(); return result; } catch(error){ showError(error); throw error; } }
+async function preparePhoto(file){if(!file||!/^image\/(png|jpeg|webp)$/i.test(file.type)||file.size>8*1024*1024)throw Object.assign(new Error('PHOTO_IMAGE_INVALID'),{code:'PHOTO_IMAGE_INVALID'});const source=await createImageBitmap(file);const size=360;const canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;const context=canvas.getContext('2d');context.fillStyle='#eef3f8';context.fillRect(0,0,size,size);const scale=Math.min(size/source.width,size/source.height);const width=Math.round(source.width*scale);const height=Math.round(source.height*scale);context.drawImage(source,(size-width)/2,(size-height)/2,width,height);source.close?.();const dataUrl=canvas.toDataURL('image/jpeg',.76);if(dataUrl.length>430000)throw Object.assign(new Error('PHOTO_IMAGE_TOO_LARGE'),{code:'PHOTO_IMAGE_TOO_LARGE'});return dataUrl;}
+function openStudentDialog(student={},mode='edit') {
+  const dialog=$('#recordDialog');const isRestore=mode==='restore';
+  $('#dialogTitle').textContent=student.id?(isRestore?'Restore student':'Update student'):'Admit student';$('#dialogError').textContent='';
+  $('#dialogBody').innerHTML=`<div class="photo-field"><img id="dialogPhotoPreview" class="photo-preview" src="${esc(student.photo || '/public-school-logo.webp')}" alt="Student picture"><input id="dialogPhotoData" type="hidden"><div class="photo-actions"><label>Choose picture<input id="dialogPhotoFile" type="file" accept="image/png,image/jpeg,image/webp" ${isRestore?'disabled':''}></label></div><div class="photo-note">The image is resized automatically before secure upload.</div></div><label class="full">Full name<input name="name" maxlength="160" required value="${esc(student.name || '')}" ${isRestore?'readonly':''}></label><label>Gender<select name="gender" ${isRestore?'disabled':''}><option value="">Select</option><option value="male" ${String(student.gender).toLowerCase()==='male'?'selected':''}>Male</option><option value="female" ${String(student.gender).toLowerCase()==='female'?'selected':''}>Female</option></select></label><label>Class<select name="classKey" id="dialogClass" required></select></label><label>Admission date<input name="admissionDate" type="date" max="${new Date().toISOString().slice(0,10)}" value="${esc(student.admission_date || '')}" ${isRestore?'disabled':''}></label><label>House<input name="house" maxlength="80" value="${esc(student.house || '')}" ${isRestore?'disabled':''}></label><label>Age<input name="age" maxlength="20" value="${esc(student.age || '')}" ${isRestore?'disabled':''}></label><div class="full panel-divider"><strong>Guardian data (actual school data only)</strong><small class="muted">Leave blank when no verified guardian information is available.</small></div><label>Guardian full name<input name="guardianFullName" maxlength="160" value="${esc(student.guardian?.fullName || '')}" ${isRestore?'disabled':''}></label><label>Relationship<input name="guardianRelationship" maxlength="80" placeholder="Parent / Guardian" value="${esc(student.guardian?.relationship || '')}" ${isRestore?'disabled':''}></label><label>Guardian phone<input name="guardianPhone" maxlength="40" value="${esc(student.guardian?.primaryPhone || '')}" ${isRestore?'disabled':''}></label><label>Guardian WhatsApp<input name="guardianWhatsappNumber" maxlength="40" value="${esc(student.guardian?.whatsappPhone || '')}" ${isRestore?'disabled':''}></label><label>Guardian email<input name="guardianEmail" type="email" maxlength="254" value="${esc(student.guardian?.email || '')}" ${isRestore?'disabled':''}></label><label class="check-row"><input name="guardianNotificationConsent" type="checkbox" ${student.guardian?.notificationConsent?'checked':''} ${isRestore?'disabled':''}> Notification consent</label>`;
+  const select=$('#dialogClass');pagesLoadClasses(select,student.class_key);
+  $('#dialogPhotoFile')?.addEventListener('change',async(event)=>{try{const photo=await preparePhoto(event.target.files?.[0]);$('#dialogPhotoData').value=photo;$('#dialogPhotoPreview').src=photo;}catch(error){$('#dialogError').textContent=error.code||error.message;}});
+  $('#recordForm').onsubmit=async(event)=>{if(event.submitter?.value === 'cancel') { dialog.close(); return; } event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget).entries());try{const result=await write(student.id?(isRestore?'students.restore':'students.update'):'students.create',student.id?(isRestore?{studentId:student.id,classKey:values.classKey}:{studentId:student.id,...values}):values);const studentId=result.studentId || student.id;const photo=$('#dialogPhotoData')?.value;if(photo&&studentId)await uploadPhoto('student',studentId,photo,requestId());if(event.submitter?.value === 'cancel') { dialog.close(); return; }
+  if(values.guardianFullName && studentId)await write('guardian.upsert',{studentId,fullName:values.guardianFullName,relationship:values.guardianRelationship || 'Guardian',phone:values.guardianPhone,whatsappNumber:values.guardianWhatsappNumber,email:values.guardianEmail,isPrimary:true,isLegalGuardian:true,notificationConsent:values.guardianNotificationConsent==='on',preferredLanguage:'english'});resetCache();dialog.close();await loadContext();}catch(error){$('#dialogError').textContent=error.code || error.message;}};dialog.showModal();
+}
+function openStudentArchiveDialog(student) {
+  const dialog=$('#recordDialog');$('#dialogTitle').textContent='Archive student';$('#dialogError').textContent='';
+  $('#dialogBody').innerHTML=`<p class="full muted">${esc(student.name || 'Student')} · ${esc(student.admno || student.class_key || '')}</p><label>Lifecycle status<select name="lifecycleStatus" required><option value="archived">Archived</option><option value="graduated">Graduated</option><option value="transferred">Transferred</option><option value="withdrawn">Withdrawn</option><option value="suspended">Suspended</option></select></label><label class="full">Reason<textarea name="reason" minlength="8" maxlength="500" required></textarea></label>`;
+  $('#recordForm').onsubmit=async(event)=>{if(event.submitter?.value === 'cancel') { dialog.close(); return; } event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget).entries());try{await write('students.archive',{studentId:student.id,lifecycleStatus:values.lifecycleStatus,reason:values.reason});dialog.close();}catch(error){$('#dialogError').textContent=error.code || error.message;}};dialog.showModal();
+}
+async function pagesLoadClasses(select,value){try{const data=await registryRequest('read','catalog',{});(data.classes||[]).filter((item)=>item.is_active).forEach((item)=>select.append(new Option(item.display_name || item.class_key,item.class_key)));select.value=value || ''; }catch(error){showError(error);}}
+async function handleStudentAction(event){const button=event.target.closest('[data-student-action]');if(!button)return;const id=button.dataset.studentId;const data=await registryRequest('read','student',{studentId:id});const student=data.students?.[0];if(!student)return;if(button.dataset.studentAction==='profile'){await openProfileDialog('student',id);return;}if(button.dataset.studentAction==='archive'){openStudentArchiveDialog(student);return;}const guardianData=await registryRequest('read','guardians',{studentId:id}).catch(()=>({guardians:[]}));const guardian=(guardianData.guardians||[]).find((item)=>item.isPrimary) || guardianData.guardians?.[0];openStudentDialog({...student,guardian},button.dataset.studentAction==='restore'?'restore':'edit');}
+async function handleStaffAction(event){const button=event.target.closest('[data-staff-action="profile"]');if(!button)return;await openProfileDialog('staff',button.dataset.staffId);}
+
+function profileDepartment(classKey, value){const match=String(classKey||'').match(/^ss[23](?:-(arts|science|business|general))?$/);return value || (match && match[1] !== 'general' ? match[1] : '');}
+function profilePortfolioName(item){return item.name || item.portfolio_name || item.portfolioCode || 'Custom portfolio';}
+const staffAccessTemplates=[
+  ['','Profile only','Visible designation only; no additional student scope'],
+  ['principal','Principal','All students and management Registry controls'],
+  ['director','Director','All students and management Registry controls'],
+  ['vice_principal','Vice Principal','All students and management Registry controls'],
+  ['director_primary','Director of Primary School Affairs','Early-childhood and Primary students'],
+  ['headmistress','Headmistress','Early-childhood through Primary 1 students'],
+  ['assistant_headmistress','Assistant Headmistress','Early-childhood through Primary 1 students'],
+  ['class_teacher','Class Teacher','Assigned class students'],
+  ['subject_teacher','Subject Teacher','Assigned subject context'],
+  ['bursar','Bursar','Profile-only designation']
+];
+function accessTemplateOptions(selected=''){return staffAccessTemplates.map(([code,label])=>`<option value="${esc(code)}" ${code===selected?'selected':''}>${esc(label)}</option>`).join('');}
+function accessTemplateLabel(code){return staffAccessTemplates.find(([value])=>value===code)?.[1] || 'Profile only';}
+function profileRow(text, detail, actions=[]){const node=document.createElement('div');node.className='stack-row';const main=document.createElement('div');const strong=document.createElement('strong');strong.textContent=text;const small=document.createElement('small');small.textContent=detail || '';main.append(strong,small);node.append(main);if(actions.length){const buttons=document.createElement('div');buttons.className='row-actions';actions.forEach((button)=>buttons.append(button));node.append(buttons);}return node;}
+function renderProfileDialog(){
+  const target=$('#profileDialogBody');const profile=activeProfile?.profile || {};const type=activeProfile?.targetType;const canManage=hasCapability('portfolio.manage');const senior=type==='student' && /^ss[123](?:-(arts|science|business|general))?$/.test(String(profile.class_key||''));const departmentEligible=type==='student' && /^ss[23](?:-(arts|science|business|general))?$/.test(String(profile.class_key||''));
+  if(!target)return;
+  const title=profile.full_name || profile.name || 'Profile';$('#profileDialogTitle').textContent=title;$('#profileDialogIntro').textContent=type==='student'?`${profile.admno || 'Student'} · ${profile.class_label || profile.class_key || ''}`:`${profile.staff_number || 'Staff record'} · ${profile.designation || 'Staff profile'}`;
+  let html=`<div class="profile-summary-grid"><div><span>Full name</span><strong>${esc(profile.full_name || profile.name || '—')}</strong></div><div><span>${type==='student'?'Class':'Staff number'}</span><strong>${esc(type==='student'?(profile.class_label || profile.class_key || '—'):(profile.staff_number || '—'))}</strong></div>${type==='student'?`<div><span>Permanent number</span><strong>${esc(profile.admno || 'Pending')}</strong></div>`:`<div><span>Employment</span><strong>${esc(profile.employment_status || 'Active')}</strong></div>`}</div>`;
+  if(departmentEligible)html+=`<section class="profile-section"><div class="section-head"><div><p class="panelEyebrow">ACADEMIC STREAM</p><h3>Department</h3><p class="muted small">Select the senior-secondary department for this student.</p></div></div><form id="profileDepartmentForm" class="inline-form"><label>Department<select id="profileDepartment" required><option value="">Select department</option><option value="arts">Arts</option><option value="science">Science</option><option value="business">Business</option></select></label><button class="primary" type="submit">Save department</button></form></section>`;
+  if(canManage && (type==='staff' || senior))html+=`<section class="profile-section"><div class="section-head"><div><p class="panelEyebrow">MANAGEMENT ONLY</p><h3>Custom portfolios</h3><p class="muted small">Create a school portfolio attached to this profile. A visible name never grants access by itself; choose an approved access template when a staff member needs a defined school scope.</p></div></div><div id="profilePortfolioList" class="profile-portfolio-list"></div><form id="profileCustomPortfolioForm" class="form-grid profile-custom-form"><label>Portfolio name<input id="profileCustomPortfolioName" maxlength="120" required placeholder="e.g. Examination Coordinator"></label><label class="full">Description<textarea id="profileCustomPortfolioDescription" maxlength="500" rows="3" placeholder="Optional management description"></textarea></label>${type==='staff'?`<label class="full">Access template<select id="profileCustomPortfolioTemplate">${accessTemplateOptions()}</select><small class="muted">Templates are limited to approved school roles; technical authority is never assignable here.</small></label>`:''}<button class="primary" type="submit">Create custom portfolio</button></form></section>`;
+  
+    if(!senior && type==='student')html+='<div class="empty profile-info-note">Custom student portfolios are available only for Senior Secondary (SS1-SS3) profiles.</div>';
+    
+    if(type === 'staff' && hasCapability('allocations.school.manage')) {
+      html += '<section class="profile-section"><div class="section-head"><div><p class="panelEyebrow">DUTIES</p><h3>Assign class & subjects</h3></div></div><form id="profileClassAllocationForm" class="form-grid profile-custom-form"><label>Class<select id="profileAllocationClass" required></select></label><label>Responsibility<select id="profileAllocationResponsibility"><option value="class_teacher">Main class teacher</option><option value="assistant_class_teacher">Assistant teacher</option></select></label><button class="primary" type="submit">Assign class responsibility</button></form><form id="profileSubjectAllocationForm" class="form-grid profile-custom-form"><label>Class<select id="profileSubjectClass" required></select></label><fieldset class="full" id="profileSubjectChoicesFieldset" hidden><legend>Subjects</legend><div id="profileSubjectChoices" class="check-grid"></div></fieldset><button class="primary" type="submit">Assign subject responsibilities</button></form></section>';
+    }
+    
+    target.innerHTML=html;
+
+  if(departmentEligible){$('#profileDepartment').value=profileDepartment(profile.class_key,profile.department_code);$('#profileDepartmentForm').onsubmit=async(event)=>{event.preventDefault();const targetId=activeProfile.targetId;try{await profileRequest({action:'department.update',targetType:'student',targetId,departmentCode:$('#profileDepartment').value,requestId:requestId()});toast('Department updated','success');resetCache();await openProfileDialog('student',targetId);}catch(error){showError(error);}};}
+  
+    const list=$('#profilePortfolioList');
+    
+    if(type === 'staff' && hasCapability('allocations.school.manage')) {
+      const currentTargetId = activeProfile.targetId;
+      registryRequest('read','catalog',{}).then(catalog => {
+        const classes = catalog.classes || [];
+        const classSelect = document.getElementById('profileAllocationClass');
+        const subjectClass = document.getElementById('profileSubjectClass');
+        if(classSelect && subjectClass) {
+          classSelect.innerHTML = '<option value="">Choose class</option>';
+          subjectClass.innerHTML = '<option value="">Choose class</option>';
+          classes.filter(c => c.is_active !== false).forEach(c => {
+             classSelect.add(new Option(c.display_name || c.class_key, c.class_key));
+             subjectClass.add(new Option(c.display_name || c.class_key, c.class_key));
+          });
+          
+          subjectClass.addEventListener('change', () => {
+             const subjects = catalog.subjects || [];
+             const val = subjectClass.value;
+             const isSec = classes.find(c => c.class_key === val)?.stage_code === 'secondary';
+             const fieldset = document.getElementById('profileSubjectChoicesFieldset');
+             const node = document.getElementById('profileSubjectChoices');
+             if(fieldset) fieldset.hidden = !val || !isSec;
+             if(node) {
+               node.innerHTML = '';
+               if(val && isSec) {
+                 subjects.filter(s => s.class_key === val).forEach(s => {
+                   const lbl = document.createElement('label');
+                   const inp = document.createElement('input');
+                   inp.type = 'checkbox';
+                   inp.value = s.subject_index;
+                   lbl.append(inp, document.createTextNode(s.subject_name));
+                   node.append(lbl);
+                 });
+               }
+             }
+          });
+        }
+      }).catch(console.error);
+
+      document.getElementById('profileClassAllocationForm')?.addEventListener('submit', async(event) => {
+        event.preventDefault();
+        try {
+          await write('allocations.class.set', { classKey: document.getElementById('profileAllocationClass').value, staffId: currentTargetId, responsibility: document.getElementById('profileAllocationResponsibility').value, reason: 'Assigned via Profile' });
+          document.getElementById('profileAllocationClass').value = '';
+        } catch(e) { /* Error shown by write() */ }
+      });
+      document.getElementById('profileSubjectAllocationForm')?.addEventListener('submit', async(event) => {
+        event.preventDefault();
+        try {
+          const subjectIndexes = Array.from(document.querySelectorAll('#profileSubjectChoices input:checked')).map(i => Number(i.value));
+          await write('allocations.subject.set', { classKey: document.getElementById('profileSubjectClass').value, staffId: currentTargetId, subjectIndexes, reason: 'Assigned via Profile' });
+          document.getElementById('profileSubjectClass').value = '';
+          document.getElementById('profileSubjectChoicesFieldset').hidden = true;
+        } catch(e) { /* Error shown by write() */ }
+      });
+    }
+if(list){const assignments=activeProfile.portfolios||[];if(!assignments.length){list.innerHTML='<div class="empty profile-info-note">No portfolio has been created for this profile.</div>';}else assignments.forEach((item)=>{const custom=item.custom===true || item.metadata?.custom===true;const active=item.assignment_status==='active';const actions=[];if(custom&&active&&type==='staff'){const templateWrap=document.createElement('label');templateWrap.className='profile-template-control';templateWrap.textContent='Access';const template=document.createElement('select');template.innerHTML=accessTemplateOptions(item.access_template_code || '');templateWrap.append(template);const apply=document.createElement('button');apply.type='button';apply.className='ghost';apply.textContent='Apply';apply.onclick=async()=>{try{await profileRequest({action:'portfolio.access_template',targetType:'staff',targetId:activeProfile.targetId,assignmentId:item.assignment_id,accessTemplateCode:template.value,requestId:requestId()});toast('Access template updated','success');resetCache();await openProfileDialog('staff',activeProfile.targetId);}catch(error){showError(error);}};const templateActions=document.createElement('div');templateActions.className='profile-template-actions';templateActions.append(templateWrap,apply);actions.push(templateActions);}if(custom&&active){const remove=document.createElement('button');remove.type='button';remove.className='ghost danger';remove.textContent='Remove';remove.onclick=async()=>{const targetId=activeProfile.targetId;try{await profileRequest({action:'portfolio.end',targetType:type,targetId,assignmentId:item.assignment_id,requestId:requestId()});toast('Portfolio removed','success');resetCache();await openProfileDialog(type,targetId);}catch(error){showError(error);}};actions.push(remove);}const templateDetail=item.access_template_code ? ` · access ${accessTemplateLabel(item.access_template_code)}` : '';list.appendChild(profileRow(`${profilePortfolioName(item)}${custom?' · Custom':''}`,`${item.description || `${item.assignment_status || 'active'} · ${item.academic_session || 'current'}`}${templateDetail}`,actions));});}
+  $('#profileCustomPortfolioForm')?.addEventListener('submit',async(event)=>{event.preventDefault();const targetId=activeProfile.targetId;const name=$('#profileCustomPortfolioName').value.trim();const description=$('#profileCustomPortfolioDescription').value.trim();const template=$('#profileCustomPortfolioTemplate')?.value || '';try{const result=await profileRequest({action:'portfolio.create',targetType:type,targetId,portfolioName:name,portfolioDescription:description,requestId:requestId()});if(type==='staff'&&result.assignmentId){await profileRequest({action:'portfolio.access_template',targetType:'staff',targetId,assignmentId:result.assignmentId,accessTemplateCode:template,requestId:requestId()});}toast('Custom portfolio created','success');resetCache();await openProfileDialog(type,targetId);}catch(error){showError(error);}});
+}
+async function openProfileDialog(targetType,targetId){const result=await profileRequest({action:'read',targetType,targetId});activeProfile={targetType,targetId,profile:result.profile || {},portfolios:result.portfolios || []};renderProfileDialog();const dialog=$('#profileDialog');if(dialog&&!dialog.open)dialog.showModal();}
+async function handleSignature(file){if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{await uploadSignature(reader.result,requestId());toast('Signature uploaded','success');resetCache();await loadContext();}catch(error){showError(error);}};reader.readAsDataURL(file);}
+async function handleSelfPhoto(file){if(!file)return;try{const photo=await preparePhoto(file);$('#selfPhotoPreview').src=photo;await uploadPhoto('staff',state.context?.actor?.staffId||null,photo,requestId());toast('Profile picture updated','success');resetCache();await loadContext();}catch(error){showError(error);}}
+function reviewRegistration(registration,action){
+  if(action==='under_review'){write('registration.under_review',{registrationId:registration.id}).catch(showError);return;}
+  const dialog=$('#registrationDialog');const form=$('#registrationForm');const body=$('#registrationDialogBody');const error=$('#registrationDialogError');const approval=action==='registration.approve';
+  $('#registrationDialogTitle').textContent=approval?'Approve staff registration':'Reject staff registration';$('#registrationDialogIntro').textContent=`${registration.full_name || 'Staff registration'} · ${registration.email || 'No email'}`;error.textContent='';
+  body.innerHTML=approval?`<label>Staff category<select name="staffCategory" required><option value="teaching">Teaching</option><option value="non_teaching">Non-teaching</option><option value="management">Management</option><option value="contract">Contract</option><option value="casual">Casual</option></select></label><label>Designation<input name="designation" maxlength="160" required></label><label>Department<input name="department" maxlength="160"></label><label>School section<input name="schoolSection" maxlength="160"></label><label class="full">Approval reason<input name="reason" minlength="8" required value="Approved through Central Registry"></label>`:`<label class="full">Rejection reason<textarea name="reason" minlength="8" maxlength="500" required></textarea></label>`;
+  form.onsubmit=async(event)=>{event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget).entries());try{await write(action,{registrationId:registration.id,...values});dialog.close();}catch(result){error.textContent=result.code || result.message;}};dialog.showModal();
+}
+function endAllocation(item,type){
+  const dialog=$('#allocationEndDialog');const form=$('#allocationEndForm');const error=$('#allocationEndError');
+  if(!dialog||!form)return;
+  pendingAllocationEnd={item,type}; error.textContent=''; $('#allocationEndIntro').textContent=`${item.class_name || item.class_key || 'Allocation'} · ${item.subject_name || item.responsibility?.replaceAll('_',' ') || item.full_name || ''}`; if(document.getElementById('allocationEndReason')) $('#allocationEndReason').value='Allocation ended through Central Registry';
+  form.onsubmit=async(event)=>{if(event.submitter?.value === 'cancel') { dialog.close(); return; } event.preventDefault(); const reason = $('#allocationEndReason')?.value?.trim() || 'Allocation ended through Central Registry'; try{await write(type,{allocationId:pendingAllocationEnd.item.id,reason});pendingAllocationEnd=null;dialog.close();}catch(result){error.textContent=result.code || result.message;}};dialog.showModal();
+}
+
+$('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();$('#authError').textContent='';try{const result=await sessionRequest({action:'login',login:$('#loginName').value.trim(),password:$('#loginPassword').value});if(result.must_change_password){$('#authError').textContent='Password change is required. Use Forgot or set password before entering Registry.';return;}applyContext(result.context || await getSession());await loadRoute('dashboard',true);}catch(error){$('#authError').textContent=error.code || error.message;}});
+$('#sidebarSignOutButton')?.addEventListener('click',async()=>{try{await sessionRequest({action:'logout'});}catch{/* cookie is cleared locally */}lock();});
+$('#refreshButton').addEventListener('click',()=>loadContext().catch(showError));
+$$('[data-route]').forEach((button)=>button.addEventListener('click',()=>{loadRoute(button.dataset.route);document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');}));
+$('#sidebarToggle')?.addEventListener('click',()=>{const open=document.body.classList.toggle('nav-open');$('#sidebarToggle').setAttribute('aria-expanded',String(open));});
+$('#sidebarClose')?.addEventListener('click',()=>{document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');});
+$('#sidebarBackdrop')?.addEventListener('click',()=>{document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');});
+document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&document.body.classList.contains('nav-open')){document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');}});
+$('#studentSearchButton').addEventListener('click',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentStatus').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentClass').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentRows').addEventListener('click',handleStudentAction);$('#newStudentButton').addEventListener('click',()=>openStudentDialog());
+$('#selfProfileForm').addEventListener('submit',async(event)=>{event.preventDefault();const payload={phone:$('#selfPhone').value.trim(),whatsappNumber:$('#selfWhatsapp').value.trim(),address:$('#selfAddress').value.trim(),emergencyContact:$('#selfEmergency').value.trim()};await write('profile.self.update',payload);});$('#selfPhotoFile').addEventListener('change',(event)=>handleSelfPhoto(event.target.files?.[0]));$('#signatureFile').addEventListener('change',(event)=>handleSignature(event.target.files?.[0]));$('#staffSearchButton').addEventListener('click',()=>{pages.invalidate('staff');pages.loadStaff().catch(showError);});
+$('#allocationRefresh').addEventListener('click',()=>{pages.invalidate('catalog');pages.invalidate('allocations');pages.loadAllocations().catch(showError);});
+,
+$('#responsibilityClass').addEventListener('change',(event)=>pages.renderSelectedResponsibilities(event.target.value));$('#printClassResponsibilities').addEventListener('click',()=>pages.printResponsibilities('class'));$('#printSubjectResponsibilities').addEventListener('click',()=>pages.printResponsibilities('subjects'));
+$('#staffRows').addEventListener('click',handleStaffAction);$('#profileDialogClose').addEventListener('click',()=>{activeProfile=null;$('#profileDialog').close();});$('#calendarRefresh').addEventListener('click',()=>{pages.invalidate('calendar');pages.loadCalendar().catch(showError);});
+
+window.RegistryApp={write,loadRoute,reviewRegistration,endAllocation,openProfileDialog,async openStudentClass(classKey){await loadRoute('students');const select=$('#studentClass');select.value=classKey;pages.invalidate('students');await pages.loadStudents();}};
+async function bootstrap(){
+  const requested=ssoRequested();
+  if(requested)setSsoPending('Opening Staff Portal…','Connecting to your secure school session.');
+  try{
+    const exchanged=await exchangeSsoCallback();
+    if(exchanged?.ok){try{sessionStorage.removeItem(SSO_RECOVERY_KEY);}catch{}applyContext(exchanged.context || await getSession());await loadRoute('dashboard',true);return;}
+    try{const context=await getSession();applyContext(context);await loadRoute('dashboard',true);return;}catch{/* no Registry cookie yet */}
+    lock();
+    if(new URLSearchParams(window.location.search).get('sso')==='1')await beginSso();
+  }catch(error){clearSsoTransaction();if(requested){if(canRecoverSso(error)&&recoverSsoOnce())return;showSsoFailure(error);}else{$('#authError').textContent=error.code || error.message || 'SSO sign-in failed';lock();}}
+}
+bootstrap();
+
