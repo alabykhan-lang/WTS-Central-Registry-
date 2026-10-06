@@ -124,7 +124,7 @@ function openStudentArchiveDialog(student) {
   $('#dialogBody').innerHTML=`<p class="full muted">${esc(student.name || 'Student')} · ${esc(student.admno || student.class_key || '')}</p><label>Lifecycle status<select name="lifecycleStatus" required><option value="archived">Archived</option><option value="graduated">Graduated</option><option value="transferred">Transferred</option><option value="withdrawn">Withdrawn</option><option value="suspended">Suspended</option></select></label><label class="full">Reason<textarea name="reason" minlength="8" maxlength="500" required></textarea></label>`;
   $('#recordForm').onsubmit=async(event)=>{if(event.submitter?.value === 'cancel') { dialog.close(); return; } event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget).entries());try{await write('students.archive',{studentId:student.id,lifecycleStatus:values.lifecycleStatus,reason:values.reason});dialog.close();}catch(error){$('#dialogError').textContent=error.code || error.message;}};dialog.showModal();
 }
-async function pagesLoadClasses(select,value){try{const data=await registryRequest('read','catalog',{});(data.classes||[]).filter((item)=>item.is_active).forEach((item)=>select.append(new Option(item.display_name || item.class_key,item.class_key)));select.value=value || ''; }catch(error){showError(error);}}
+async function pagesLoadClasses(select,value){try{const data=await registryRequest('read','catalog',{});(data.classes||[]).filter((item)=>item.is_active && !item.class_key.includes('::')).forEach((item)=>select.append(new Option(item.display_name || item.class_key,item.class_key)));select.value=value || ''; }catch(error){showError(error);}}
 async function handleStudentAction(event){const button=event.target.closest('[data-student-action]');if(!button)return;const id=button.dataset.studentId;const data=await registryRequest('read','student',{studentId:id});const student=data.students?.[0];if(!student)return;if(button.dataset.studentAction==='profile'){await openProfileDialog('student',id);return;}if(button.dataset.studentAction==='archive'){openStudentArchiveDialog(student);return;}const guardianData=await registryRequest('read','guardians',{studentId:id}).catch(()=>({guardians:[]}));const guardian=(guardianData.guardians||[]).find((item)=>item.isPrimary) || guardianData.guardians?.[0];openStudentDialog({...student,guardian},button.dataset.studentAction==='restore'?'restore':'edit');}
 async function handleStaffAction(event){const button=event.target.closest('[data-staff-action="profile"]');if(!button)return;await openProfileDialog('staff',button.dataset.staffId);}
 
@@ -168,7 +168,7 @@ function renderProfileDialog(){
     if(type === 'staff' && hasCapability('allocations.school.manage')) {
       const currentTargetId = activeProfile.targetId;
       registryRequest('read','catalog',{}).then(catalog => {
-        const classes = catalog.classes || [];
+        const classes = (catalog.classes || []).filter(c => !c.class_key.includes('::'));
         const classSelect = document.getElementById('profileAllocationClass');
         const subjectClass = document.getElementById('profileSubjectClass');
         if(classSelect && subjectClass) {
@@ -267,6 +267,7 @@ async function bootstrap(){
   }catch(error){clearSsoTransaction();if(requested){if(canRecoverSso(error)&&recoverSsoOnce())return;showSsoFailure(error);}else{$('#authError').textContent=error.code || error.message || 'SSO sign-in failed';lock();}}
 }
 bootstrap();
+
 
 
 

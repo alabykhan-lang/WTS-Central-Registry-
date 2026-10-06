@@ -8,6 +8,9 @@ async function read(action, payload = {}) {
   const key = `${action}:${JSON.stringify(payload)}`;
   if (state.cache.has(key)) return state.cache.get(key);
   const result = await registryRequest('read', action, payload);
+  if (action === 'catalog' && result && result.classes) {
+    result.classes = result.classes.filter(c => !c.class_key.includes('::'));
+  }
   state.cache.set(key, result);
   return result;
 }
@@ -97,7 +100,7 @@ export async function loadStudents() {
   if (!data.students?.length) empty(rows, 'No students found in your permitted scope.');
   data.students.forEach((student) => {
     const node = document.createElement('tr');
-    if (hasCapability('portfolio.manage')) { node.className = 'clickable-row'; node.dataset.staffAction = 'profile'; node.dataset.staffId = staff.staff_id || staff.id; node.title = 'Open profile'; }
+    
     const person = document.createElement('td');
     const wrap = document.createElement('div');
     wrap.className = 'person-cell';
@@ -152,6 +155,7 @@ export async function loadStaff() {
   if (!data.staff?.length) empty(rows, 'No staff records in your permitted scope.');
   data.staff.forEach((staff) => {
     const node = document.createElement('tr');
+    if (hasCapability('portfolio.manage')) { node.className = 'clickable-row'; node.dataset.staffAction = 'profile'; node.dataset.staffId = staff.staff_id || staff.id; node.title = 'Open profile'; }
     const person = document.createElement('td');
     const wrap = document.createElement('div');
     wrap.className = 'person-cell';
@@ -385,4 +389,9 @@ export async function loadCalendar() {
 export function invalidate(action) {
   for (const key of state.cache.keys()) if (key.startsWith(`${action}:`)) state.cache.delete(key);
 }
+
+
+
+
+
 
