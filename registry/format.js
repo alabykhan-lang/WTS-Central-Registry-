@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 export const $ = (selector, root = document) => root.querySelector(selector);
 export const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -18,9 +18,9 @@ const FRIENDLY = {
 export function toast(message, type = '') { 
   const displayMessage = FRIENDLY[message] || message;
   const node=document.createElement('div'); 
-  node.className=	oast ; 
+  node.className=`toast ${type}`; 
   node.textContent=displayMessage; 
   $('#toasts')?.append(node); 
   setTimeout(()=>node.remove(),4200); 
-}`; node.textContent=message; $('#toasts')?.append(node); setTimeout(()=>node.remove(),4200); }
+}
 export function setText(selector,value) { const node=$(selector); if (node) node.textContent=String(value ?? ''); }

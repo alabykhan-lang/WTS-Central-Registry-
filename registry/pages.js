@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 import { registryRequest } from './api-client.js';
 import { state, hasCapability } from './state.js';
@@ -201,11 +201,6 @@ export async function loadRegistrations() {
   data.registrations.forEach((item) => {
     const actions = [];
     if (hasCapability('staff.school.read') && ['pending', 'under_review'].includes(item.registration_status)) {
-      
-      
-      
-      
-      
       
     }
     if (hasCapability('portfolio.manage') && ['pending', 'under_review'].includes(item.registration_status)) {
