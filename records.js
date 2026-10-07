@@ -400,15 +400,13 @@
       bindPhotoPicker,
     );
   }
-  async function archiveStudent(id) {
-    const reason = prompt("Reason for archiving:", "Student left the school"),
-      lifecycle =
-        reason &&
-        prompt(
-          "Status: graduated, transferred, withdrawn, suspended or archived",
-          "archived",
-        );
-    if (!reason || !lifecycle) return;
+    async function archiveStudent(id) {
+    const reason = "Archived via Central Registry";
+    const lifecycle = prompt(
+      "Status: graduated, transferred, withdrawn, suspended or archived",
+      "archived"
+    );
+    if (!lifecycle) return;
     try {
       await studentWrite("archive", {
         studentId: id,

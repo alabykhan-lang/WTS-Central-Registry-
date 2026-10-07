@@ -21,11 +21,37 @@
     "'": "&#39;",
     "\"": "&quot;",
   }[character]));
+    const FRIENDLY_TOASTS = {
+    'STUDENT_UPDATED': 'Student records successfully updated.',
+    'STUDENT_ARCHIVED': 'Student successfully archived.',
+    'STUDENT_RESTORED': 'Student successfully restored.',
+    'STUDENT_ADMITTED': 'Student successfully admitted.',
+    'GUARDIAN_UPSERTED': 'Guardian details successfully saved.',
+    'REGISTRATION_APPROVED': 'Staff registration successfully approved.',
+    'REGISTRATION_REJECTED': 'Staff registration rejected.',
+    'REGISTRATION_UNDER_REVIEW': 'Staff registration is now under review.',
+    'PORTFOLIO_ASSIGNMENT_SET': 'Portfolio assigned successfully.',
+    'ACADEMIC_TRANSITION_APPLIED': 'Academic transition applied successfully.',
+    'STAFF_UPDATED': 'Staff details successfully updated.',
+    'STAFF_ARCHIVED': 'Staff successfully archived.',
+    'STAFF_RESTORED': 'Staff successfully restored.',
+    'STAFF_SUSPENDED': 'Staff successfully suspended.',
+    'PORTFOLIO_CREATED': 'Portfolio successfully assigned.',
+    'PORTFOLIO_UPDATED': 'Portfolio successfully updated.',
+    'PORTFOLIO_REMOVED': 'Portfolio successfully removed.',
+    'ACCESS_TEMPLATE_APPLIED': 'Access template applied successfully.'
+  };
   function toast(message, type = "") {
     const node = document.createElement("div");
     node.className = `toast ${type}`;
-    node.textContent = message;
-    $("#toasts")?.append(node);
+    if (FRIENDLY_TOASTS[message]) {
+        node.textContent = FRIENDLY_TOASTS[message];
+    } else if (message.toUpperCase() === message && message.includes('_')) {
+        node.textContent = message.replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase()) + '.';
+    } else {
+        node.textContent = message;
+    }
+    document.querySelector("#toasts")?.append(node);
     setTimeout(() => node.remove(), 4200);
   }
   async function registryRequest(operation, action, payload = {}) {
