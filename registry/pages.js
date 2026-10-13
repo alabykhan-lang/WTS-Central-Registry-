@@ -61,16 +61,18 @@ function avatar(src, name) {
 export async function loadDashboard() {
   const data = await read('dashboard');
   const metrics = clear('#dashboardMetrics');
-  (data.cards || []).forEach((metric) => {
-    const node = document.createElement('article');
-    node.className = 'metric-card';
-    const label = document.createElement('span');
-    label.textContent = metric.label;
-    const value = document.createElement('strong');
-    value.textContent = String(metric.value ?? 0);
-    node.append(label, value);
-    metrics?.append(node);
-  });
+  (data.cards || [])
+    .filter((metric) => metric.key !== 'archived' && metric.label !== 'Archived students')
+    .forEach((metric) => {
+      const node = document.createElement('article');
+      node.className = 'metric-card';
+      const label = document.createElement('span');
+      label.textContent = metric.label;
+      const value = document.createElement('strong');
+      value.textContent = String(metric.value ?? 0);
+      node.append(label, value);
+      metrics?.append(node);
+    });
 }
 
 export async function loadStudents() {
@@ -83,17 +85,21 @@ export async function loadStudents() {
   const search = $('#studentSearch');
   const status = $('#studentStatus');
   const searchButton = $('#studentSearchButton');
-  [search, status, searchButton].forEach((node) => { if (node) node.disabled = !classKey; });
-  $('#studentPrompt')?.toggleAttribute('hidden', Boolean(classKey));
-  $('#studentResults')?.toggleAttribute('hidden', !classKey);
+  const searchVal = search?.value?.trim() || '';
+  const hasQuery = Boolean(classKey || searchVal);
+  [search, status, searchButton].forEach((node) => { if (node) node.disabled = false; });
+  $('#studentPrompt')?.toggleAttribute('hidden', hasQuery);
+  $('#studentResults')?.toggleAttribute('hidden', !hasQuery);
   const rows = clear('#studentRows');
   const canManageSchool = hasCapability('students.school.manage');
   const classScopes = state.context?.entitlements?.classScopes || [];
   const canEdit = (student) => canManageSchool || (hasCapability('students.class.manage') && classScopes.includes(student.class_key));
   const canProfile = (student) => canEdit(student) || hasCapability('portfolio.manage');
   $('#newStudentButton')?.toggleAttribute('hidden', !(canManageSchool || (hasCapability('students.class.manage') && classScopes.length)));
-  if (!classKey) return;
-  const payload = { search: search?.value || '', classKey, status: status?.value ?? 'active' };
+  if (!classKey && !searchVal) {
+    if (!classKey) return;
+  }
+  const payload = { search: searchVal, classKey, status: status?.value ?? 'active' };
   const data = await read('students', payload);
   const emptyNode = $('#studentEmpty');
   if (emptyNode) emptyNode.hidden = Boolean(data.students?.length);

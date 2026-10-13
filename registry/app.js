@@ -103,7 +103,7 @@ function recoverSsoOnce(){
 }
 
 function showError(error) { const code=error?.code || error?.message || 'REGISTRY_REQUEST_FAILED'; toast(code,'error'); if (error?.status===401) lock(); }
-function lock() { state.context=null; activeProfile=null; resetCache(); document.body.classList.remove('nav-open'); $('#sidebarToggle')?.setAttribute('aria-expanded','false'); document.body.classList.add('locked'); $('#registryShell').hidden=true; $('#authGate').hidden=false; $('#loginPassword').value=''; if(!document.documentElement.classList.contains('sso-requested'))$('#loginName').focus(); }
+function lock() { state.context=null; activeProfile=null; resetCache(); document.body.classList.remove('nav-open'); $('#sidebarToggle')?.setAttribute('aria-expanded','false'); document.body.classList.add('locked'); $('#registryShell').hidden=true; $('#authGate').hidden=false; if($('#loginPassword'))$('#loginPassword').value=''; setSsoPending('Opening Staff Portal…','Connecting to your secure school session.'); }
 function applyContext(context) { document.documentElement.classList.remove('sso-requested'); state.context=context; document.body.classList.remove('locked'); $('#authGate').hidden=true; $('#registryShell').hidden=false; $('#actorLine').textContent=`${context.actor?.fullName || 'Staff'} · ${context.actor?.staffNumber || ''} · ${scopeText()}`; $('#scopeNotice').textContent=scopeText(); $('#scopeNotice').hidden=false; configureNav(); }
 function configureNav() { const show=(route,yes)=>{const node=document.querySelector(`[data-route="${route}"]`);if(node)node.hidden=!yes;}; show('students',hasCapability('students.school.read')||hasCapability('students.stage.read')||hasCapability('students.class.read')); show('staff',true); show('allocations',hasCapability('allocations.school.manage')); show('calendar',hasCapability('academic_calendar.manage')); }
 async function loadRoute(route,force=false) { state.route=route; $$('.registry-page').forEach((page)=>page.classList.toggle('active',page.dataset.page===route)); $$('.registry-sidebar [data-route]').forEach((button)=>button.classList.toggle('active',button.dataset.route===route)); $('#pageTitle').textContent=titles[route] || 'Central Registry'; if(force) resetCache(); try { if(route==='dashboard') await pages.loadDashboard(); else if(route==='students') await pages.loadStudents(); else if(route==='staff') await pages.loadStaff(); else if(route==='allocations') await pages.loadAllocations(); else if(route==='calendar') await pages.loadCalendar(); } catch(error){showError(error);} }
@@ -240,31 +240,46 @@ function endAllocation(item,type){
   form.onsubmit=async(event)=>{if(event.submitter?.value === 'cancel') { dialog.close(); return; } event.preventDefault(); const reason = $('#allocationEndReason')?.value?.trim() || 'Allocation ended through Central Registry'; try{await write(type,{allocationId:pendingAllocationEnd.item.id,reason});pendingAllocationEnd=null;dialog.close();}catch(result){error.textContent=result.code || result.message;}};dialog.showModal();
 }
 
-$('#loginForm').addEventListener('submit',async(event)=>{event.preventDefault();$('#authError').textContent='';try{const result=await sessionRequest({action:'login',login:$('#loginName').value.trim(),password:$('#loginPassword').value});if(result.must_change_password){$('#authError').textContent='Password change is required. Use Forgot or set password before entering Registry.';return;}applyContext(result.context || await getSession());await loadRoute('dashboard',true);}catch(error){$('#authError').textContent=error.code || error.message;}});
-$('#sidebarSignOutButton')?.addEventListener('click',async()=>{try{await sessionRequest({action:'logout'});}catch{/* cookie is cleared locally */}lock();});
+$('#loginForm')?.addEventListener('submit',async(event)=>{event.preventDefault();$('#authError').textContent='';try{const result=await sessionRequest({action:'login',login:$('#loginName')?.value?.trim() || '',password:$('#loginPassword')?.value || ''});if(result.must_change_password){$('#authError').textContent='Password change is required. Use Forgot or set password before entering Registry.';return;}applyContext(result.context || await getSession());await loadRoute('dashboard',true);}catch(error){$('#authError').textContent=error.code || error.message;}});
+$('#sidebarSignOutButton')?.addEventListener('click',async()=>{try{await sessionRequest({action:'logout'});}catch{/* cookie is cleared locally */}lock();window.location.assign(`${SSO_PORTAL_ORIGIN}/portal/sign-in`);});
 $('#refreshButton').addEventListener('click',()=>loadContext().catch(showError));
 $$('[data-route]').forEach((button)=>button.addEventListener('click',()=>{loadRoute(button.dataset.route);document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');}));
 $('#sidebarToggle')?.addEventListener('click',()=>{const open=document.body.classList.toggle('nav-open');$('#sidebarToggle').setAttribute('aria-expanded',String(open));});
 $('#sidebarClose')?.addEventListener('click',()=>{document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');});
 $('#sidebarBackdrop')?.addEventListener('click',()=>{document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');});
 document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&document.body.classList.contains('nav-open')){document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');}});
-$('#studentSearchButton').addEventListener('click',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentStatus').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentClass').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentRows').addEventListener('click',handleStudentAction);$('#newStudentButton').addEventListener('click',()=>openStudentDialog());
+$('#studentSearchButton').addEventListener('click',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentSearch')?.addEventListener('keydown',(event)=>{if(event.key==='Enter'){event.preventDefault();pages.invalidate('students');pages.loadStudents().catch(showError);}});$('#studentStatus').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentClass').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentRows').addEventListener('click',handleStudentAction);$('#newStudentButton').addEventListener('click',()=>openStudentDialog());
 $('#selfProfileForm').addEventListener('submit',async(event)=>{event.preventDefault();const payload={phone:$('#selfPhone').value.trim(),whatsappNumber:$('#selfWhatsapp').value.trim(),address:$('#selfAddress').value.trim(),emergencyContact:$('#selfEmergency').value.trim()};await write('profile.self.update',payload);});$('#selfPhotoFile').addEventListener('change',(event)=>handleSelfPhoto(event.target.files?.[0]));$('#signatureFile').addEventListener('change',(event)=>handleSignature(event.target.files?.[0]));$('#staffSearchButton').addEventListener('click',()=>{pages.invalidate('staff');pages.loadStaff().catch(showError);});
 $('#allocationRefresh').addEventListener('click',()=>{pages.invalidate('catalog');pages.invalidate('allocations');pages.loadAllocations().catch(showError);});
 $('#responsibilityClass').addEventListener('change',(event)=>pages.renderSelectedResponsibilities(event.target.value));$('#printClassResponsibilities').addEventListener('click',()=>pages.printResponsibilities('class'));$('#printSubjectResponsibilities').addEventListener('click',()=>pages.printResponsibilities('subjects'));
 $('#staffRows').addEventListener('click',handleStaffAction);$('#profileDialogClose').addEventListener('click',()=>{activeProfile=null;$('#profileDialog').close();});$('#calendarRefresh').addEventListener('click',()=>{pages.invalidate('calendar');pages.loadCalendar().catch(showError);});
 
+// confirmed:$('#transitionConfirm').checked
 window.RegistryApp={write,loadRoute,reviewRegistration,endAllocation,openProfileDialog,async openStudentClass(classKey){await loadRoute('students');const select=$('#studentClass');select.value=classKey;pages.invalidate('students');await pages.loadStudents();}};
 async function bootstrap(){
-  const requested=ssoRequested();
-  if(requested)setSsoPending('Opening Staff Portal…','Connecting to your secure school session.');
+  setSsoPending('Opening Staff Portal…','Connecting to your secure school session.');
   try{
     const exchanged=await exchangeSsoCallback();
-    if(exchanged?.ok){try{sessionStorage.removeItem(SSO_RECOVERY_KEY);}catch{}applyContext(exchanged.context || await getSession());await loadRoute('dashboard',true);return;}
-    try{const context=await getSession();applyContext(context);await loadRoute('dashboard',true);return;}catch{/* no Registry cookie yet */}
-    lock();
-    if(new URLSearchParams(window.location.search).get('sso')==='1')await beginSso();
-  }catch(error){clearSsoTransaction();if(requested){if(canRecoverSso(error)&&recoverSsoOnce())return;showSsoFailure(error);}else{$('#authError').textContent=error.code || error.message || 'SSO sign-in failed';lock();}}
+    if(exchanged?.ok){
+      try{sessionStorage.removeItem(SSO_RECOVERY_KEY);}catch{}
+      applyContext(exchanged.context || await getSession());
+      await loadRoute('dashboard',true);
+      return;
+    }
+    try{
+      const context=await getSession();
+      applyContext(context);
+      await loadRoute('dashboard',true);
+      return;
+    }catch{
+      /* no Central Registry session cookie yet - auto initiate SSO handoff */
+    }
+    await beginSso();
+  }catch(error){
+    clearSsoTransaction();
+    if(canRecoverSso(error)&&recoverSsoOnce())return;
+    showSsoFailure(error);
+  }
 }
 bootstrap();
 
