@@ -10,7 +10,7 @@ const SUPABASE_KEY = process.env.WTS_SUPABASE_SERVER_KEY
   || process.env.SUPABASE_ANON_KEY
   || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZnR6eWVham1zeGRyYndhYXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjczNTgsImV4cCI6MjA4OTQ0MzM1OH0.QUeDRP1IpHCjvecqAOEZAqmMalEFlCLXylZP5D5iLog';
 const COOKIE_NAME = 'wts_registry_session';
-const MAX_AGE = 8 * 60 * 60;
+const MAX_AGE = 30 * 24 * 60 * 60; // 30 days
 const DEFAULT_ORIGIN = 'https://wts-central-registry.vercel.app';
 const deploymentOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]
   .filter(Boolean)
@@ -143,7 +143,7 @@ module.exports = async function registrySession(req, res) {
     if (!current) return send(res, 401, { ok: false, code: 'REGISTRY_SESSION_REQUIRED' }, clearCookie());
     const result = await rpc('school_registry_session_context_v2', { p_session_id: current.id, p_session_secret: current.secret });
     if (!result?.ok) return send(res, rpcStatus(result, 401), result, clearCookie());
-    return send(res, 200, result);
+    return send(res, 200, result, sessionCookie(current.id, current.secret));
   }
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');

@@ -6,7 +6,7 @@ const SUPABASE_KEY = process.env.WTS_SUPABASE_PUBLISHABLE_KEY
   || process.env.SUPABASE_ANON_KEY
   || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZnR6eWVham1zeGRyYndhYXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjczNTgsImV4cCI6MjA4OTQ0MzM1OH0.QUeDRP1IpHCjvecqAOEZAqmMalEFlCLXylZP5D5iLog';
 const COOKIE_NAME = 'wts_staff_session';
-const MAX_AGE = 8 * 60 * 60;
+const MAX_AGE = 30 * 24 * 60 * 60; // 30 days
 const ALLOWED_ORIGINS = new Set(['https://wts-central-registry.vercel.app']);
 
 function send(res, status, payload, cookie) {
@@ -76,7 +76,7 @@ module.exports = async function staffSession(req, res) {
       p_session_id: current.id, p_session_secret: current.secret, p_target_app_code: 'staff_self_service',
     });
     if (!result?.ok) return send(res, 401, result, clearCookie());
-    return send(res, 200, result);
+    return send(res, 200, result, sessionCookie(current.id, current.secret));
   }
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
