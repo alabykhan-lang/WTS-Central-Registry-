@@ -16,29 +16,22 @@
 </head>
 <body class="locked">
   <section class="auth-gate" id="authGate">
-    <form id="loginForm" class="auth-card">
+    <div class="auth-card" id="authCard">
       <div class="auth-brandline"><img class="auth-logo registry-logo" src="/public-school-logo.webp" alt="Way to Success Standard Schools logo"><div><span class="auth-eyebrow">Staff access</span><small>Way to Success Standard Schools · Ejigbo</small></div></div>
       <span class="auth-kicker">Official school registry</span>
       <h1>Central Registry</h1>
       <p class="auth-subtitle">One secure staff entry point for official school records. Sign in directly with your staff number or official email and password on the official School Staff Portal.</p>
-      <input id="loginName" type="hidden" autocomplete="username">
-      <input id="loginPassword" type="password" autocomplete="current-password" style="display:none">
       <div class="sso-pending-panel" id="ssoPendingPanel" role="status" aria-live="polite">
         <i aria-hidden="true"></i>
-        <strong id="ssoPendingTitle">Opening Staff Portal…</strong>
+        <strong id="ssoPendingTitle">Connecting to Staff Portal…</strong>
         <span id="ssoPendingMessage">Connecting to your secure school session.</span>
-        <a id="ssoReturnLink" href="https://wts-school-platform.vercel.app/portal/sign-in" hidden>Return to Staff Portal</a>
+        <a id="ssoReturnLink" href="https://wts-school-platform.vercel.app/portal/sign-in" hidden>Sign in to Staff Portal</a>
       </div>
       <div class="auth-error" id="authError" role="alert" aria-live="polite"></div>
-    </form>
+    </div>
   </section>
 
   <div class="registry-shell" id="registryShell" hidden>
-    <nav class="wts-global-portal-nav">
-      <a href="https://wts-school-platform.vercel.app/portal/sign-in">Dashboard</a>
-      <a href="https://wts-central-registry.vercel.app">Registry</a>
-      <a href="https://wts-result-system.vercel.app">Results</a>
-    </nav>
     <aside class="registry-sidebar" id="sidebar">
       <div class="brand"><img class="registry-logo" src="/public-school-logo.webp" alt="Way to Success Standard Schools logo"><span><strong>Way to Success Standard Schools</strong><small>Central Registry</small></span><button class="sidebar-close" id="sidebarClose" type="button" aria-label="Close navigation">×</button></div>
       <nav aria-label="Central Registry">
@@ -71,6 +64,11 @@
   <dialog id="recordDialog"><form method="dialog" id="recordForm"><h2 id="dialogTitle">Record</h2><div id="dialogBody" class="form-grid"></div><div id="dialogError" class="auth-error" role="alert"></div><div class="dialog-actions"><button class="ghost" value="cancel" formnovalidate>Cancel</button><button class="primary" id="dialogSave" value="default">Save</button></div></form></dialog>
   <dialog id="allocationEndDialog"><form method="dialog" id="allocationEndForm"><h2>End allocation</h2><p id="allocationEndIntro" class="muted"></p><div id="allocationEndError" class="auth-error" role="alert"></div><div class="dialog-actions"><button class="ghost" value="cancel" formnovalidate>Cancel</button><button class="primary" value="default">End allocation</button></div></form></dialog>
   <dialog id="profileDialog"><div class="profile-dialog-card"><div class="section-head"><div><p class="panelEyebrow">PROFILE</p><h2 id="profileDialogTitle">Profile</h2><p id="profileDialogIntro" class="muted"></p></div><button class="ghost" id="profileDialogClose" type="button">Close</button></div><div id="profileDialogBody"></div></div></dialog>
+  <nav class="wts-global-portal-nav">
+    <a href="https://wts-school-platform.vercel.app/portal/sign-in">Dashboard</a>
+    <a href="https://wts-central-registry.vercel.app">Registry</a>
+    <a href="https://wts-result-system.vercel.app">Results</a>
+  </nav>
   <div id="toasts" aria-live="polite"></div>
   <script type="module" src="/registry/app.js"></script>
 </body>

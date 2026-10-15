@@ -60,7 +60,7 @@ module.exports = async function registryV2(req, res) {
   if (origin && !ORIGINS.has(origin) && !String(process.env.WTS_REGISTRY_ALLOWED_ORIGINS || '').split(',').map((x) => x.trim()).includes(origin)) return send(res, 403, { ok: false, code: 'ORIGIN_NOT_ALLOWED' }, true);
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return send(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' }); }
   const current = session(req);
-  if (!current) return send(res, 401, { ok: false, code: 'REGISTRY_SESSION_REQUIRED' }, true);
+  if (!current) return send(res, 401, { ok: false, code: 'REGISTRY_SESSION_REQUIRED' }, false);
   const input = await parseBody(req);
   if (!input || typeof input !== 'object') return send(res, 400, { ok: false, code: 'INVALID_REQUEST' });
   const action = typeof input.action === 'string' ? input.action.trim() : '';

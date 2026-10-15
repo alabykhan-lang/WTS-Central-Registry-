@@ -36,11 +36,30 @@ function ssoCookieRemove(key){try{document.cookie=`${encodeURIComponent(key)}=; 
 function ssoStoreGet(key){try{const value=sessionStorage.getItem(key);if(value)return value;}catch{}return ssoCookieGet(key);}
 function ssoStoreSet(key,value){try{sessionStorage.setItem(key,value);}catch{}ssoCookieSet(key,value);}
 function ssoStoreRemove(key){try{sessionStorage.removeItem(key);}catch{}ssoCookieRemove(key);}
-function saveSsoTransaction(transaction){ssoStoreSet(SSO_TRANSACTION_KEY,JSON.stringify(transaction));}
-function loadSsoTransaction(){try{const transaction=JSON.parse(ssoStoreGet(SSO_TRANSACTION_KEY) || 'null');if(transaction && transaction.verifier && transaction.state && transaction.nonce && Number(transaction.expires_at)>Date.now())return transaction;}catch{}return null;}
-function clearSsoTransaction(){ssoStoreRemove(SSO_TRANSACTION_KEY);}
+function saveSsoTransaction(transaction){
+  if(transaction?.verifier) ssoStoreSet('wts_pkce_verifier', transaction.verifier);
+  if(transaction?.state) ssoStoreSet('wts_pkce_state', transaction.state);
+  if(transaction?.nonce) ssoStoreSet('wts_pkce_nonce', transaction.nonce);
+  ssoStoreSet(SSO_TRANSACTION_KEY,JSON.stringify(transaction));
+}
+function loadSsoTransaction(){
+  const savedState = ssoStoreGet('wts_pkce_state');
+  const savedVerifier = ssoStoreGet('wts_pkce_verifier');
+  const savedNonce = ssoStoreGet('wts_pkce_nonce');
+  if(savedVerifier && savedState && savedNonce) {
+    return { verifier: savedVerifier, state: savedState, nonce: savedNonce };
+  }
+  try{const transaction=JSON.parse(ssoStoreGet(SSO_TRANSACTION_KEY) || 'null');if(transaction && transaction.verifier && transaction.state && transaction.nonce && Number(transaction.expires_at)>Date.now())return transaction;}catch{}
+  return null;
+}
+function clearSsoTransaction(){
+  ssoStoreRemove('wts_pkce_verifier');
+  ssoStoreRemove('wts_pkce_state');
+  ssoStoreRemove('wts_pkce_nonce');
+  ssoStoreRemove(SSO_TRANSACTION_KEY);
+}
 function ssoRequested(){try{const query=new URLSearchParams(window.location.search);return query.get('sso')==='1'||query.has('code')||query.has('state')||query.has('error');}catch{return false;}}
-function setSsoPending(title='Opening Staff Portal…',message='Connecting to your secure school session.'){
+function setSsoPending(title='Connecting to Staff Portal…',message='Connecting to your secure school session.'){
   document.documentElement.classList.add('sso-requested');
   const titleNode=$('#ssoPendingTitle');const messageNode=$('#ssoPendingMessage');const returnLink=$('#ssoReturnLink');
   const panel=$('#ssoPendingPanel');if(panel)panel.classList.remove('is-error');
@@ -56,25 +75,26 @@ function showSsoFailure(error){
     SSO_PKCE_INVALID:'The secure sign-in response could not be verified. Return to Staff Portal and open Central Registry again.',
     SSO_STATE_OR_NONCE_INVALID:'The secure sign-in response could not be verified. Return to Staff Portal and open Central Registry again.',
     REGISTRY_ACCESS_NOT_GRANTED:'This account does not have authorised Central Registry access.',
+    CENTRAL_REGISTRY_ACCESS_NOT_GRANTED:'This account does not have authorised Central Registry access.',
     REGISTRY_IDENTITY_NOT_ACTIVE:'This staff identity is not active for Central Registry.',
     PORTAL_OPERATING_MODE_RESTRICTED:'Central Registry is temporarily unavailable under the current operating policy.',
     IDENTITY_SERVICE_UNAVAILABLE:'The identity service is temporarily unavailable. Please try again later.'
   };
   setSsoPending('Could not open Central Registry',messages[code]||'The secure Staff Portal handoff did not complete. Return to Staff Portal and open the module again.');
   const panel=$('#ssoPendingPanel');if(panel)panel.classList.add('is-error');
-  const returnLink=$('#ssoReturnLink');if(returnLink){returnLink.href=`${SSO_PORTAL_ORIGIN}/workspace`;returnLink.hidden=false;}
+  const returnLink=$('#ssoReturnLink');if(returnLink){returnLink.href=`${SSO_PORTAL_ORIGIN}/portal/sign-in`;returnLink.textContent='Sign in to Staff Portal';returnLink.hidden=false;}
   console.warn('Central Registry SSO handoff failed',code);
 }
 async function beginSso(){
   if(window.__WTS_CENTRAL_SSO_PENDING)return;
   window.__WTS_CENTRAL_SSO_PENDING=true;
-  setSsoPending('Opening Staff Portal…','Connecting to your secure school session.');
+  setSsoPending('Connecting to Staff Portal…','Connecting to your secure school session.');
   const result=await sessionRequest({action:'sso_begin',portal_origin:SSO_PORTAL_ORIGIN});
   if(!result?.authorize_url)throw Object.assign(new Error('SSO_BEGIN_FAILED'),{code:'SSO_BEGIN_FAILED'});
   if(result.transaction?.verifier&&result.transaction?.state&&result.transaction?.nonce){
     saveSsoTransaction(result.transaction);
   }
-  window.location.assign(result.authorize_url);
+  window.location.replace(result.authorize_url);
 }
 async function exchangeSsoCallback(){
   const query=new URLSearchParams(window.location.search);const returnedError=query.get('error') || query.get('code_error');
@@ -83,13 +103,15 @@ async function exchangeSsoCallback(){
   if(!code && !returnedState && !returnedNonce)return null;
   if(!code || !returnedState || !returnedNonce){clearSsoTransaction();throw Object.assign(new Error('SSO_CALLBACK_INVALID'),{code:'SSO_CALLBACK_INVALID'});}
   const transaction=loadSsoTransaction();
-  const result=await sessionRequest({action:'sso_exchange',grant_type:'authorization_code',client_id:SSO_CLIENT_ID,redirect_uri:SSO_REDIRECT_URI,code,code_verifier:transaction?.verifier || '',state:returnedState,nonce:returnedNonce});
+  const savedState=ssoStoreGet('wts_pkce_state');
+  const savedVerifier=(savedState && savedState === returnedState ? ssoStoreGet('wts_pkce_verifier') : '') || transaction?.verifier || '';
+  const result=await sessionRequest({action:'sso_exchange',grant_type:'authorization_code',client_id:SSO_CLIENT_ID,redirect_uri:SSO_REDIRECT_URI,code,code_verifier:savedVerifier,state:returnedState,nonce:returnedNonce});
   clearSsoTransaction();window.history.replaceState({},document.title,`${window.location.pathname}${window.location.hash}`);return result;
 }
 
 function canRecoverSso(error){
   const code=error?.code||error?.message||'';
-  return ['SSO_REQUEST_INVALID','SSO_PKCE_INVALID','SSO_STATE_OR_NONCE_INVALID'].includes(code);
+  return ['SSO_REQUEST_INVALID','SSO_PKCE_INVALID','SSO_STATE_OR_NONCE_INVALID','SSO_CALLBACK_INVALID'].includes(code);
 }
 function recoverSsoOnce(){
   try{
@@ -103,7 +125,7 @@ function recoverSsoOnce(){
 }
 
 function showError(error) { const code=error?.code || error?.message || 'REGISTRY_REQUEST_FAILED'; toast(code,'error'); if (error?.status===401) lock(); }
-function lock() { state.context=null; activeProfile=null; resetCache(); document.body.classList.remove('nav-open'); $('#sidebarToggle')?.setAttribute('aria-expanded','false'); document.body.classList.add('locked'); $('#registryShell').hidden=true; $('#authGate').hidden=false; if($('#loginPassword'))$('#loginPassword').value=''; setSsoPending('Opening Staff Portal…','Connecting to your secure school session.'); }
+function lock() { state.context=null; activeProfile=null; resetCache(); document.body.classList.remove('nav-open'); $('#sidebarToggle')?.setAttribute('aria-expanded','false'); document.body.classList.add('locked'); $('#registryShell').hidden=true; $('#authGate').hidden=false; setSsoPending('Connecting to Staff Portal…','Connecting to your secure school session.'); const returnLink=$('#ssoReturnLink'); if(returnLink){returnLink.href=`${SSO_PORTAL_ORIGIN}/portal/sign-in`;returnLink.textContent='Sign in to Staff Portal';returnLink.hidden=false;} }
 function applyContext(context) { document.documentElement.classList.remove('sso-requested'); state.context=context; document.body.classList.remove('locked'); $('#authGate').hidden=true; $('#registryShell').hidden=false; $('#actorLine').textContent=`${context.actor?.fullName || 'Staff'} · ${context.actor?.staffNumber || ''} · ${scopeText()}`; $('#scopeNotice').textContent=scopeText(); $('#scopeNotice').hidden=false; configureNav(); }
 function configureNav() { const show=(route,yes)=>{const node=document.querySelector(`[data-route="${route}"]`);if(node)node.hidden=!yes;}; show('students',hasCapability('students.school.read')||hasCapability('students.stage.read')||hasCapability('students.class.read')); show('staff',true); show('allocations',hasCapability('allocations.school.manage')); show('calendar',hasCapability('academic_calendar.manage')); }
 async function loadRoute(route,force=false) { state.route=route; $$('.registry-page').forEach((page)=>page.classList.toggle('active',page.dataset.page===route)); $$('.registry-sidebar [data-route]').forEach((button)=>button.classList.toggle('active',button.dataset.route===route)); $('#pageTitle').textContent=titles[route] || 'Central Registry'; if(force) resetCache(); try { if(route==='dashboard') await pages.loadDashboard(); else if(route==='students') await pages.loadStudents(); else if(route==='staff') await pages.loadStaff(); else if(route==='allocations') await pages.loadAllocations(); else if(route==='calendar') await pages.loadCalendar(); } catch(error){showError(error);} }
@@ -257,7 +279,7 @@ $('#staffRows').addEventListener('click',handleStaffAction);$('#profileDialogClo
 // confirmed:$('#transitionConfirm').checked
 window.RegistryApp={write,loadRoute,reviewRegistration,endAllocation,openProfileDialog,async openStudentClass(classKey){await loadRoute('students');const select=$('#studentClass');select.value=classKey;pages.invalidate('students');await pages.loadStudents();}};
 async function bootstrap(){
-  setSsoPending('Opening Staff Portal…','Connecting to your secure school session.');
+  setSsoPending('Connecting to Staff Portal…','Connecting to your secure school session.');
   try{
     const exchanged=await exchangeSsoCallback();
     if(exchanged?.ok){
