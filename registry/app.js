@@ -33,9 +33,21 @@ async function codeChallenge(verifier){const digest=await crypto.subtle.digest('
 function ssoCookieGet(key){try{const prefix=encodeURIComponent(key)+'=';const part=document.cookie.split('; ').find((item)=>item.indexOf(prefix)===0);return part?decodeURIComponent(part.slice(prefix.length)):'';}catch{return '';}}
 function ssoCookieSet(key,value){try{document.cookie=`${encodeURIComponent(key)}=${encodeURIComponent(value)}; Max-Age=300; Path=/; Secure; SameSite=Lax`;}catch{}}
 function ssoCookieRemove(key){try{document.cookie=`${encodeURIComponent(key)}=; Max-Age=0; Path=/; Secure; SameSite=Lax`;}catch{}}
-function ssoStoreGet(key){try{const value=sessionStorage.getItem(key);if(value)return value;}catch{}return ssoCookieGet(key);}
-function ssoStoreSet(key,value){try{sessionStorage.setItem(key,value);}catch{}ssoCookieSet(key,value);}
-function ssoStoreRemove(key){try{sessionStorage.removeItem(key);}catch{}ssoCookieRemove(key);}
+function ssoStoreGet(key){
+  try{const value=sessionStorage.getItem(key);if(value)return value;}catch{}
+  try{const value=localStorage.getItem(key);if(value)return value;}catch{}
+  return ssoCookieGet(key);
+}
+function ssoStoreSet(key,value){
+  try{sessionStorage.setItem(key,value);}catch{}
+  try{localStorage.setItem(key,value);}catch{}
+  ssoCookieSet(key,value);
+}
+function ssoStoreRemove(key){
+  try{sessionStorage.removeItem(key);}catch{}
+  try{localStorage.removeItem(key);}catch{}
+  ssoCookieRemove(key);
+}
 function saveSsoTransaction(transaction){
   if(transaction?.verifier) ssoStoreSet('wts_pkce_verifier', transaction.verifier);
   if(transaction?.state) ssoStoreSet('wts_pkce_state', transaction.state);
@@ -124,7 +136,7 @@ function recoverSsoOnce(){
   }catch{return false;}
 }
 
-function showError(error) { const code=error?.code || error?.message || 'REGISTRY_REQUEST_FAILED'; toast(code,'error'); if (error?.status===401) lock(); }
+function showError(error) { const code=error?.code || error?.message || 'REGISTRY_REQUEST_FAILED'; toast(code,'error'); if (error?.status===401 && !state.context) lock(); }
 function lock() { state.context=null; activeProfile=null; resetCache(); document.body.classList.remove('nav-open'); $('#sidebarToggle')?.setAttribute('aria-expanded','false'); document.body.classList.add('locked'); $('#registryShell').hidden=true; $('#authGate').hidden=false; setSsoPending('Connecting to Staff Portal…','Connecting to your secure school session.'); const returnLink=$('#ssoReturnLink'); if(returnLink){returnLink.href=`${SSO_PORTAL_ORIGIN}/portal/sign-in`;returnLink.textContent='Sign in to Staff Portal';returnLink.hidden=false;} }
 function applyContext(context) { document.documentElement.classList.remove('sso-requested'); state.context=context; document.body.classList.remove('locked'); $('#authGate').hidden=true; $('#registryShell').hidden=false; $('#actorLine').textContent=`${context.actor?.fullName || 'Staff'} · ${context.actor?.staffNumber || ''} · ${scopeText()}`; $('#scopeNotice').textContent=scopeText(); $('#scopeNotice').hidden=false; configureNav(); }
 function configureNav() { const show=(route,yes)=>{const node=document.querySelector(`[data-route="${route}"]`);if(node)node.hidden=!yes;}; show('students',hasCapability('students.school.read')||hasCapability('students.stage.read')||hasCapability('students.class.read')); show('staff',true); show('allocations',hasCapability('allocations.school.manage')); show('calendar',hasCapability('academic_calendar.manage')); }
@@ -270,6 +282,8 @@ $('#sidebarToggle')?.addEventListener('click',()=>{const open=document.body.clas
 $('#sidebarClose')?.addEventListener('click',()=>{document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');});
 $('#sidebarBackdrop')?.addEventListener('click',()=>{document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');});
 document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&document.body.classList.contains('nav-open')){document.body.classList.remove('nav-open');$('#sidebarToggle')?.setAttribute('aria-expanded','false');}});
+let studentSearchTimer=null;
+$('#studentSearch')?.addEventListener('input',()=>{clearTimeout(studentSearchTimer);studentSearchTimer=setTimeout(()=>{pages.invalidate('students');pages.loadStudents().catch(showError);},250);});
 $('#studentSearchButton').addEventListener('click',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentSearch')?.addEventListener('keydown',(event)=>{if(event.key==='Enter'){event.preventDefault();pages.invalidate('students');pages.loadStudents().catch(showError);}});$('#studentStatus').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentClass').addEventListener('change',()=>{pages.invalidate('students');pages.loadStudents().catch(showError);});$('#studentRows').addEventListener('click',handleStudentAction);$('#newStudentButton').addEventListener('click',()=>openStudentDialog());
 $('#selfProfileForm').addEventListener('submit',async(event)=>{event.preventDefault();const payload={phone:$('#selfPhone').value.trim(),whatsappNumber:$('#selfWhatsapp').value.trim(),address:$('#selfAddress').value.trim(),emergencyContact:$('#selfEmergency').value.trim()};await write('profile.self.update',payload);});$('#selfPhotoFile').addEventListener('change',(event)=>handleSelfPhoto(event.target.files?.[0]));$('#signatureFile').addEventListener('change',(event)=>handleSignature(event.target.files?.[0]));$('#staffSearchButton').addEventListener('click',()=>{pages.invalidate('staff');pages.loadStaff().catch(showError);});
 $('#allocationRefresh').addEventListener('click',()=>{pages.invalidate('catalog');pages.invalidate('allocations');pages.loadAllocations().catch(showError);});

@@ -3,20 +3,29 @@
 const SUPABASE_URL = process.env.WTS_SUPABASE_URL || 'https://wuftzyeajmsxdrbwaawl.supabase.co';
 const SUPABASE_KEY = process.env.WTS_SUPABASE_SERVER_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.WTS_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZnR6eWVham1zeGRyYndhYXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NjczNTgsImV4cCI6MjA4OTQ0MzM1OH0.QUeDRP1IpHCjvecqAOEZAqmMalEFlCLXylZP5D5iLog';
 const COOKIE_NAME = 'wts_registry_session';
+const MAX_AGE = 30 * 24 * 60 * 60; // 30 days
 const deploymentOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]
   .filter(Boolean)
   .map((value) => String(value).replace(/^https?:\/\//, '').replace(/\/$/, ''))
   .map((value) => `https://${value}`);
 const ORIGINS = new Set(['https://wts-central-registry.vercel.app', ...deploymentOrigins]);
 
-function send(res, status, body, clear = false) {
+function clearCookie() {
+  return `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function sessionCookie(id, secret) {
+  return `${COOKIE_NAME}=${encodeURIComponent(`${id}.${secret}`)}; Path=/; Max-Age=${MAX_AGE}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function send(res, status, body, cookie = null) {
   res.statusCode = status;
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  if (clear) res.setHeader('Set-Cookie', `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
+  if (cookie) res.setHeader('Set-Cookie', cookie);
   res.end(JSON.stringify(body));
 }
 
@@ -57,10 +66,10 @@ function statusFor(code) {
 
 module.exports = async function registryV2(req, res) {
   const origin = String(req.headers.origin || '').trim();
-  if (origin && !ORIGINS.has(origin) && !String(process.env.WTS_REGISTRY_ALLOWED_ORIGINS || '').split(',').map((x) => x.trim()).includes(origin)) return send(res, 403, { ok: false, code: 'ORIGIN_NOT_ALLOWED' }, true);
+  if (origin && !ORIGINS.has(origin) && !String(process.env.WTS_REGISTRY_ALLOWED_ORIGINS || '').split(',').map((x) => x.trim()).includes(origin)) return send(res, 403, { ok: false, code: 'ORIGIN_NOT_ALLOWED' }, clearCookie());
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return send(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' }); }
   const current = session(req);
-  if (!current) return send(res, 401, { ok: false, code: 'REGISTRY_SESSION_REQUIRED' }, false);
+  if (!current) return send(res, 401, { ok: false, code: 'REGISTRY_SESSION_REQUIRED' }, null);
   const input = await parseBody(req);
   if (!input || typeof input !== 'object') return send(res, 400, { ok: false, code: 'INVALID_REQUEST' });
   const action = typeof input.action === 'string' ? input.action.trim() : '';
@@ -69,6 +78,9 @@ module.exports = async function registryV2(req, res) {
   const result = input.kind === 'write'
     ? await rpc('school_registry_write_v2', { p_session_id: current.id, p_session_secret: current.secret, p_action: action, p_payload: payload })
     : await rpc('school_registry_read_v2', { p_session_id: current.id, p_session_secret: current.secret, p_action: action, p_payload: payload });
-  if (!result?.ok) return send(res, statusFor(result?.code), result, ['REGISTRY_SESSION_REQUIRED','REGISTRY_IDENTITY_NOT_ACTIVE','REGISTRY_ACCESS_NOT_GRANTED'].includes(result?.code));
-  return send(res, 200, result);
+  if (!result?.ok) {
+    const shouldClear = ['REGISTRY_SESSION_REQUIRED','REGISTRY_IDENTITY_NOT_ACTIVE','REGISTRY_ACCESS_NOT_GRANTED'].includes(result?.code);
+    return send(res, statusFor(result?.code), result, shouldClear ? clearCookie() : null);
+  }
+  return send(res, 200, result, sessionCookie(current.id, current.secret));
 };
