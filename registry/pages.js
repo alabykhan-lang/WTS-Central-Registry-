@@ -1,8 +1,8 @@
 'use strict';
 
-import { registryRequest } from './api-client.js';
-import { state, hasCapability } from './state.js';
-import { $, esc, labelClass, formatDate, setText } from './format.js';
+import { registryRequest } from './api-client.js?v=20261019a';
+import { state, hasCapability } from './state.js?v=20261019a';
+import { $, esc, labelClass, formatDate, setText } from './format.js?v=20261019a';
 
 async function read(action, payload = {}) {
   const key = `${action}:${JSON.stringify(payload)}`;
@@ -73,6 +73,55 @@ export async function loadDashboard() {
       node.append(label, value);
       metrics?.append(node);
     });
+  if (!metrics?.children.length) {
+    const profileCard = document.createElement('article');
+    profileCard.className = 'metric-card';
+    profileCard.style.cursor = 'pointer';
+    profileCard.onclick = () => window.RegistryApp?.loadRoute('staff');
+    const label = document.createElement('span');
+    label.textContent = 'My Profile & Staff Directory';
+    const value = document.createElement('strong');
+    value.textContent = state.context?.actor?.staffNumber || 'Active';
+    profileCard.append(label, value);
+    metrics?.append(profileCard);
+
+    const statusCard = document.createElement('article');
+    statusCard.className = 'metric-card';
+    const statusLabel = document.createElement('span');
+    statusLabel.textContent = 'Registry Access Scope';
+    const statusValue = document.createElement('strong');
+    statusValue.style.fontSize = '18px';
+    statusValue.textContent = data.message || 'Staff Profile & Directory Scope';
+    statusCard.append(statusLabel, statusValue);
+    metrics?.append(statusCard);
+  }
+  let classSection = $('#dashboardClassScopes');
+  if (data.classCards?.length) {
+    if (!classSection) {
+      classSection = document.createElement('div');
+      classSection.id = 'dashboardClassScopes';
+      classSection.className = 'card class-scope-card';
+      classSection.style.marginTop = '16px';
+      metrics?.parentElement?.append(classSection);
+    }
+    classSection.innerHTML = '<div class="section-head" style="margin-top:0"><div><p class="panelEyebrow">ALLOCATED CLASSES</p><h3>Your class scope</h3></div></div><div class="class-card-grid" id="dashboardClassGrid"></div>';
+    const grid = $('#dashboardClassGrid', classSection);
+    data.classCards.forEach((cls) => {
+      const tile = document.createElement('article');
+      tile.className = 'class-scope-tile';
+      tile.innerHTML = `<span>${esc(cls.display_name || labelClass(cls.class_key))}</span><strong>${esc(String(cls.active_students ?? 0))}</strong><small>${esc(String(cls.male_students ?? 0))} male · ${esc(String(cls.female_students ?? 0))} female</small>`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ghost';
+      btn.textContent = 'Open class';
+      btn.onclick = () => window.RegistryApp?.openStudentClass(cls.class_key);
+      tile.append(btn);
+      grid?.append(tile);
+    });
+    classSection.hidden = false;
+  } else if (classSection) {
+    classSection.hidden = true;
+  }
 }
 
 export async function loadStudents() {

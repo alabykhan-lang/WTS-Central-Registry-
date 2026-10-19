@@ -1,9 +1,9 @@
 'use strict';
 
-import { sessionRequest, getSession, registryRequest, uploadSignature, uploadPhoto, profileRequest } from './api-client.js';
-import { state, resetCache, hasCapability, scopeText } from './state.js';
-import { $, $$, esc, requestId, toast } from './format.js';
-import * as pages from './pages.js';
+import { sessionRequest, getSession, registryRequest, uploadSignature, uploadPhoto, profileRequest } from './api-client.js?v=20261019a';
+import { state, resetCache, hasCapability, scopeText } from './state.js?v=20261019a';
+import { $, $$, esc, requestId, toast } from './format.js?v=20261019a';
+import * as pages from './pages.js?v=20261019a';
 
 const titles={dashboard:'Dashboard',students:'Students',staff:'Staff',allocations:'Class / Subject Allocation',calendar:'Academic Calendar'};
 let pendingAllocationEnd=null;
@@ -94,7 +94,7 @@ function showSsoFailure(error){
   };
   setSsoPending('Could not open Central Registry',messages[code]||'The secure Staff Portal handoff did not complete. Return to Staff Portal and open the module again.');
   const panel=$('#ssoPendingPanel');if(panel)panel.classList.add('is-error');
-  const returnLink=$('#ssoReturnLink');if(returnLink){returnLink.href=`${SSO_PORTAL_ORIGIN}/portal/sign-in`;returnLink.textContent='Sign in to Staff Portal';returnLink.hidden=false;}
+  const returnLink=$('#ssoReturnLink');if(returnLink){returnLink.href=`${SSO_PORTAL_ORIGIN}/portal`;returnLink.textContent='Continue to Staff Portal';returnLink.hidden=false;returnLink.onclick=(event)=>{event.preventDefault();window.history.replaceState({},document.title,window.location.pathname);window.__WTS_CENTRAL_SSO_PENDING=false;beginSso().catch(()=>{window.location.assign(`${SSO_PORTAL_ORIGIN}/portal/sign-in`);});};}
   console.warn('Central Registry SSO handoff failed',code);
 }
 async function beginSso(){
@@ -123,12 +123,13 @@ async function exchangeSsoCallback(){
 
 function canRecoverSso(error){
   const code=error?.code||error?.message||'';
-  return ['SSO_REQUEST_INVALID','SSO_PKCE_INVALID','SSO_STATE_OR_NONCE_INVALID','SSO_CALLBACK_INVALID'].includes(code);
+  return ['SSO_REQUEST_INVALID','SSO_PKCE_INVALID','SSO_STATE_OR_NONCE_INVALID','SSO_CALLBACK_INVALID','SSO_CODE_INVALID','SSO_CODE_EXPIRED','CENTRAL_SSO_EXCHANGE_FAILED'].includes(code);
 }
 function recoverSsoOnce(){
   try{
-    if(sessionStorage.getItem(SSO_RECOVERY_KEY)==='1')return false;
-    sessionStorage.setItem(SSO_RECOVERY_KEY,'1');
+    const lastAttempt=Number(sessionStorage.getItem(SSO_RECOVERY_KEY)||'0');
+    if(lastAttempt && Date.now()-lastAttempt<15000)return false;
+    sessionStorage.setItem(SSO_RECOVERY_KEY,String(Date.now()));
     window.history.replaceState({},document.title,window.location.pathname);
     window.__WTS_CENTRAL_SSO_PENDING=false;
     beginSso().catch(showSsoFailure);
@@ -294,7 +295,20 @@ $('#staffRows').addEventListener('click',handleStaffAction);$('#profileDialogClo
 window.RegistryApp={write,loadRoute,reviewRegistration,endAllocation,openProfileDialog,async openStudentClass(classKey){await loadRoute('students');const select=$('#studentClass');select.value=classKey;pages.invalidate('students');await pages.loadStudents();}};
 async function bootstrap(){
   setSsoPending('Connecting to Staff Portal…','Connecting to your secure school session.');
+  const query=new URLSearchParams(window.location.search);
+  const hasCallback=query.has('code')||query.has('error')||query.has('code_error');
   try{
+    if(!hasCallback){
+      try{
+        const context=await getSession();
+        try{sessionStorage.removeItem(SSO_RECOVERY_KEY);}catch{}
+        applyContext(context);
+        await loadRoute('dashboard',true);
+        return;
+      }catch{
+        /* no active Central Registry session cookie yet */
+      }
+    }
     const exchanged=await exchangeSsoCallback();
     if(exchanged?.ok){
       try{sessionStorage.removeItem(SSO_RECOVERY_KEY);}catch{}
@@ -304,6 +318,7 @@ async function bootstrap(){
     }
     try{
       const context=await getSession();
+      try{sessionStorage.removeItem(SSO_RECOVERY_KEY);}catch{}
       applyContext(context);
       await loadRoute('dashboard',true);
       return;
@@ -313,6 +328,16 @@ async function bootstrap(){
     await beginSso();
   }catch(error){
     clearSsoTransaction();
+    try{
+      const context=await getSession();
+      window.history.replaceState({},document.title,`${window.location.pathname}${window.location.hash}`);
+      try{sessionStorage.removeItem(SSO_RECOVERY_KEY);}catch{}
+      applyContext(context);
+      await loadRoute('dashboard',true);
+      return;
+    }catch{
+      /* session check also failed */
+    }
     if(canRecoverSso(error)&&recoverSsoOnce())return;
     showSsoFailure(error);
   }
