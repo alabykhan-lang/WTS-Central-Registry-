@@ -1,20 +1,20 @@
 'use strict';
 
 export async function sessionRequest(payload) {
-  const response = await fetch('/api/registry-session', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload) });
+  const response = await fetch('/api/registry-session', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload), cache: 'no-store' });
   const result = await response.json().catch(() => ({ ok: false, code: 'REGISTRY_SESSION_INVALID_RESPONSE' }));
   if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || 'REGISTRY_SESSION_FAILED'), { code: result?.code, status: response.status });
   return result;
 }
 
 export async function getSession() {
-  let response = await fetch('/api/registry-session', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+  let response = await fetch('/api/registry-session', { credentials: 'same-origin', headers: { Accept: 'application/json' }, cache: 'no-store' });
   if (response.status === 401) {
     await new Promise((r) => setTimeout(r, 200));
-    response = await fetch('/api/registry-session', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+    response = await fetch('/api/registry-session', { credentials: 'same-origin', headers: { Accept: 'application/json' }, cache: 'no-store' });
     if (response.status === 401) {
       await new Promise((r) => setTimeout(r, 500));
-      response = await fetch('/api/registry-session', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+      response = await fetch('/api/registry-session', { credentials: 'same-origin', headers: { Accept: 'application/json' }, cache: 'no-store' });
     }
   }
   const result = await response.json().catch(() => ({ ok: false, code: 'REGISTRY_SESSION_INVALID_RESPONSE' }));
@@ -23,13 +23,13 @@ export async function getSession() {
 }
 
 export async function registryRequest(kind, action, payload = {}) {
-  let response = await fetch('/api/registry-v2', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ kind, action, payload }) });
+  let response = await fetch('/api/registry-v2', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ kind, action, payload }), cache: 'no-store' });
   if (response.status === 401) {
     await new Promise((r) => setTimeout(r, 200));
-    response = await fetch('/api/registry-v2', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ kind, action, payload }) });
+    response = await fetch('/api/registry-v2', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ kind, action, payload }), cache: 'no-store' });
     if (response.status === 401) {
       await new Promise((r) => setTimeout(r, 500));
-      response = await fetch('/api/registry-v2', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ kind, action, payload }) });
+      response = await fetch('/api/registry-v2', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ kind, action, payload }), cache: 'no-store' });
     }
   }
   const result = await response.json().catch(() => ({ ok: false, code: 'REGISTRY_INVALID_RESPONSE' }));
@@ -38,21 +38,21 @@ export async function registryRequest(kind, action, payload = {}) {
 }
 
 export async function uploadSignature(dataUrl, requestId) {
-  const response = await fetch('/api/registry-signature', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ dataUrl, requestId }) });
+  const response = await fetch('/api/registry-signature', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ dataUrl, requestId }), cache: 'no-store' });
   const result = await response.json().catch(() => ({ ok: false, code: 'SIGNATURE_INVALID_RESPONSE' }));
   if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || 'SIGNATURE_UPLOAD_FAILED'), { code: result?.code, status: response.status });
   return result;
 }
 
 export async function uploadPhoto(targetType, targetId, dataUrl, requestId) {
-  const response = await fetch('/api/registry-photo', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ targetType, targetId, dataUrl, requestId }) });
+  const response = await fetch('/api/registry-photo', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ targetType, targetId, dataUrl, requestId }), cache: 'no-store' });
   const result = await response.json().catch(() => ({ ok: false, code: 'PHOTO_INVALID_RESPONSE' }));
   if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || 'PHOTO_UPLOAD_FAILED'), { code: result?.code, status: response.status });
   return result;
 }
 
 export async function profileRequest(payload) {
-  const response = await fetch('/api/registry-profile', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload) });
+  const response = await fetch('/api/registry-profile', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload), cache: 'no-store' });
   const result = await response.json().catch(() => ({ ok: false, code: 'PROFILE_INVALID_RESPONSE' }));
   if (!response.ok || result?.ok === false) throw Object.assign(new Error(result?.code || 'PROFILE_REQUEST_FAILED'), { code: result?.code, status: response.status });
   return result;

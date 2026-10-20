@@ -271,7 +271,7 @@ function reviewRegistration(registration,action){
 function endAllocation(item,type){
   const dialog=$('#allocationEndDialog');const form=$('#allocationEndForm');const error=$('#allocationEndError');
   if(!dialog||!form)return;
-  pendingAllocationEnd={item,type}; error.textContent=''; $('#allocationEndIntro').textContent=`${item.class_name || item.class_key || 'Allocation'} · ${item.subject_name || item.responsibility?.replaceAll('_',' ') || item.full_name || ''}`; if(document.getElementById('allocationEndReason')) $('#allocationEndReason').value='Allocation ended through Central Registry';
+  pendingAllocationEnd={item,type}; error.textContent=''; $('#allocationEndIntro').textContent=`${item.class_name || item.class_key || 'Allocation'} · ${item.subject_name || item.responsibility?.replace(/_/g, ' ') || item.full_name || ''}`; if(document.getElementById('allocationEndReason')) $('#allocationEndReason').value='Allocation ended through Central Registry';
   form.onsubmit=async(event)=>{if(event.submitter?.value === 'cancel') { dialog.close(); return; } event.preventDefault(); const reason = $('#allocationEndReason')?.value?.trim() || 'Allocation ended through Central Registry'; try{await write(type,{allocationId:pendingAllocationEnd.item.id,reason});pendingAllocationEnd=null;dialog.close();}catch(result){error.textContent=result.code || result.message;}};dialog.showModal();
 }
 

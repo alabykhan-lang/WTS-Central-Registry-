@@ -19,7 +19,7 @@ let allocationSnapshot = null;
 
 function clear(selector) {
   const node = $(selector);
-  if (node) node.replaceChildren();
+  if (node) { while (node.firstChild) node.removeChild(node.firstChild); }
   return node;
 }
 
@@ -137,14 +137,14 @@ export async function loadStudents() {
   const searchVal = search?.value?.trim() || '';
   const hasQuery = Boolean(classKey || searchVal);
   [search, status, searchButton].forEach((node) => { if (node) node.disabled = false; });
-  $('#studentPrompt')?.toggleAttribute('hidden', hasQuery);
-  $('#studentResults')?.toggleAttribute('hidden', !hasQuery);
+  const pNode = $('#studentPrompt'); if (pNode) pNode.hidden = Boolean(hasQuery);
+  const rNode = $('#studentResults'); if (rNode) rNode.hidden = !hasQuery;
   const rows = clear('#studentRows');
   const canManageSchool = hasCapability('students.school.manage');
   const classScopes = state.context?.entitlements?.classScopes || [];
   const canEdit = (student) => canManageSchool || (hasCapability('students.class.manage') && classScopes.includes(student.class_key));
   const canProfile = (student) => canEdit(student) || hasCapability('portfolio.manage');
-  $('#newStudentButton')?.toggleAttribute('hidden', !(canManageSchool || (hasCapability('students.class.manage') && classScopes.length)));
+  const nNode = $('#newStudentButton'); if (nNode) nNode.hidden = !(canManageSchool || (hasCapability('students.class.manage') && classScopes.length));
   if (!classKey && !searchVal) {
     if (!classKey) return;
   }
@@ -202,7 +202,7 @@ export async function loadStudents() {
 export async function loadStaff() {
   const data = await read('staff', { search: $('#staffSearch')?.value || '', status: 'active' });
   const directory = $('#staffDirectoryCard');
-  directory?.toggleAttribute('hidden', Boolean(data.selfOnly));
+  if (directory) directory.hidden = Boolean(data.selfOnly);
   const rows = clear('#staffRows');
   const emptyNode = $('#staffEmpty');
   if (emptyNode) emptyNode.hidden = Boolean(data.staff?.length);
@@ -342,7 +342,7 @@ export function renderSelectedResponsibilities(classKey) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'ghost';
-      button.textContent = `Remove ${item.subject_name || item.responsibility?.replaceAll('_', ' ')}`;
+      button.textContent = `Remove ${item.subject_name || item.responsibility?.replace(/_/g, ' ')}`;
       button.onclick = () => window.RegistryApp.endAllocation(item, item.subject_name ? 'allocations.subject.end' : 'allocations.class.end');
       controls.append(button);
     });
