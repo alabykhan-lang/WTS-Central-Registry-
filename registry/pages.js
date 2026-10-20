@@ -95,33 +95,6 @@ export async function loadDashboard() {
     statusCard.append(statusLabel, statusValue);
     metrics?.append(statusCard);
   }
-  let classSection = $('#dashboardClassScopes');
-  if (data.classCards?.length) {
-    if (!classSection) {
-      classSection = document.createElement('div');
-      classSection.id = 'dashboardClassScopes';
-      classSection.className = 'card class-scope-card';
-      classSection.style.marginTop = '16px';
-      metrics?.parentElement?.append(classSection);
-    }
-    classSection.innerHTML = '<div class="section-head" style="margin-top:0"><div><p class="panelEyebrow">ALLOCATED CLASSES</p><h3>Your class scope</h3></div></div><div class="class-card-grid" id="dashboardClassGrid"></div>';
-    const grid = $('#dashboardClassGrid', classSection);
-    data.classCards.forEach((cls) => {
-      const tile = document.createElement('article');
-      tile.className = 'class-scope-tile';
-      tile.innerHTML = `<span>${esc(cls.display_name || labelClass(cls.class_key))}</span><strong>${esc(String(cls.active_students ?? 0))}</strong><small>${esc(String(cls.male_students ?? 0))} male · ${esc(String(cls.female_students ?? 0))} female</small>`;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'ghost';
-      btn.textContent = 'Open class';
-      btn.onclick = () => window.RegistryApp?.openStudentClass(cls.class_key);
-      tile.append(btn);
-      grid?.append(tile);
-    });
-    classSection.hidden = false;
-  } else if (classSection) {
-    classSection.hidden = true;
-  }
 }
 
 export async function loadStudents() {
