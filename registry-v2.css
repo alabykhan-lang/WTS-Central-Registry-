@@ -53,6 +53,14 @@ html.sso-requested body.locked #loginForm > .staff-registration-cta { display: n
   box-shadow: 0 -2px 10px rgba(0,0,0,0.4);
   border-top: 1px solid rgba(255,255,255,0.1);
 }
+/* Mobile fix: legacy styles.css applies nav{height:100%;display:grid} under 760px,
+   which stretched this fixed bar over the whole screen (blank registry on phones). */
+nav.wts-global-portal-nav {
+  top: auto !important;
+  height: auto !important;
+  display: flex !important;
+  grid-template-columns: none !important;
+}
 .wts-global-portal-nav a {
   color: #fff;
   text-decoration: none;
