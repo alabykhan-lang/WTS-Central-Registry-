@@ -75,7 +75,18 @@ function setSsoPending(title='Connecting to Staff Portal…',message='Connecting
   document.documentElement.classList.add('sso-requested');
   const titleNode=$('#ssoPendingTitle');const messageNode=$('#ssoPendingMessage');const returnLink=$('#ssoReturnLink');
   const panel=$('#ssoPendingPanel');if(panel)panel.classList.remove('is-error');
-  if(titleNode)titleNode.textContent=title;if(messageNode)messageNode.textContent=message;if(returnLink)returnLink.hidden=true;
+  if(titleNode)titleNode.textContent=title;if(messageNode)messageNode.textContent=message;
+  if(returnLink){
+    returnLink.hidden=true;
+    clearTimeout(window.__wtsSsoPendingTimer);
+    window.__wtsSsoPendingTimer=setTimeout(()=>{
+      if(document.documentElement.classList.contains('sso-requested')&&returnLink){
+        returnLink.href=`${SSO_PORTAL_ORIGIN}/portal`;
+        returnLink.textContent='Taking longer than usual? Return to Staff Portal';
+        returnLink.hidden=false;
+      }
+    },4000);
+  }
 }
 function showSsoFailure(error){
   const code=error?.code||error?.message||'SSO_HANDOFF_FAILED';
@@ -139,7 +150,7 @@ function recoverSsoOnce(){
 
 function showError(error) { const code=error?.code || error?.message || 'REGISTRY_REQUEST_FAILED'; toast(code,'error'); if (error?.status===401 && !state.context) lock(); }
 function lock() { state.context=null; activeProfile=null; resetCache(); document.body.classList.remove('nav-open'); $('#sidebarToggle')?.setAttribute('aria-expanded','false'); document.body.classList.add('locked'); $('#registryShell').hidden=true; $('#authGate').hidden=false; setSsoPending('Connecting to Staff Portal…','Connecting to your secure school session.'); const returnLink=$('#ssoReturnLink'); if(returnLink){returnLink.href=`${SSO_PORTAL_ORIGIN}/portal/sign-in`;returnLink.textContent='Sign in to Staff Portal';returnLink.hidden=false;} }
-function applyContext(context) { document.documentElement.classList.remove('sso-requested'); state.context=context; document.body.classList.remove('locked'); $('#authGate').hidden=true; $('#registryShell').hidden=false; $('#actorLine').textContent=`${context.actor?.fullName || 'Staff'} · ${context.actor?.staffNumber || ''} · ${scopeText()}`; $('#scopeNotice').textContent=scopeText(); $('#scopeNotice').hidden=false; configureNav(); }
+function applyContext(context) { clearTimeout(window.__wtsSsoPendingTimer); document.documentElement.classList.remove('sso-requested'); state.context=context; document.body.classList.remove('locked'); $('#authGate').hidden=true; $('#registryShell').hidden=false; $('#actorLine').textContent=`${context.actor?.fullName || 'Staff'} · ${context.actor?.staffNumber || ''} · ${scopeText()}`; $('#scopeNotice').textContent=scopeText(); $('#scopeNotice').hidden=false; configureNav(); }
 function configureNav() { const show=(route,yes)=>{const node=document.querySelector(`[data-route="${route}"]`);if(node)node.hidden=!yes;}; show('students',hasCapability('students.school.read')||hasCapability('students.stage.read')||hasCapability('students.class.read')); show('staff',true); show('allocations',hasCapability('allocations.school.manage')); show('calendar',hasCapability('academic_calendar.manage')); }
 async function loadRoute(route,force=false) { state.route=route; $$('.registry-page').forEach((page)=>page.classList.toggle('active',page.dataset.page===route)); $$('.registry-sidebar [data-route]').forEach((button)=>button.classList.toggle('active',button.dataset.route===route)); $('#pageTitle').textContent=titles[route] || 'Central Registry'; if(force) resetCache(); try { if(route==='dashboard') await pages.loadDashboard(); else if(route==='students') await pages.loadStudents(); else if(route==='staff') await pages.loadStaff(); else if(route==='allocations') await pages.loadAllocations(); else if(route==='calendar') await pages.loadCalendar(); } catch(error){showError(error);} }
 async function loadContext() { const context=await getSession(); applyContext(context); await loadRoute(state.route || 'dashboard',true); }
@@ -306,7 +317,9 @@ async function bootstrap(){
         await loadRoute('dashboard',true);
         return;
       }catch{
-        /* no active Central Registry session cookie yet */
+        /* no active Central Registry session cookie yet - trigger SSO immediately */
+        await beginSso();
+        return;
       }
     }
     const exchanged=await exchangeSsoCallback();
@@ -342,6 +355,10 @@ async function bootstrap(){
     showSsoFailure(error);
   }
 }
+window.addEventListener('unhandledrejection',(event)=>{
+  console.error('Unhandled rejection in Central Registry:',event.reason);
+  if(!state.context) showSsoFailure(event.reason);
+});
 bootstrap();
 
 
