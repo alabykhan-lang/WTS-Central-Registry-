@@ -67,6 +67,26 @@ module.exports = async function accountRecovery(req, res) {
     return send(res, 200, ACCEPTED);
   }
 
+  // Teacher self-service with the shared WTS teacher code (no email needed).
+  // Used when a member of teaching staff needs to set or replace a password.
+  if (action === 'shared_code' || action === 'teacher_code') {
+    const login = typeof input.login === 'string' ? input.login.trim().slice(0, 64) : '';
+    const code = typeof input.code === 'string' ? input.code.trim().slice(0, 64) : '';
+    const password = typeof input.password === 'string' ? input.password : '';
+    const confirmPassword = typeof input.confirmPassword === 'string' ? input.confirmPassword : '';
+    if (!login || !code) return send(res, 400, { ok: false, code: 'SHARED_TEACHER_CODE_REQUIRED' });
+    if (!password || password !== confirmPassword || password.length > 512) {
+      return send(res, 400, { ok: false, code: 'PASSWORD_CONFIRMATION_REQUIRED' });
+    }
+    const result = await serviceRpc('school_identity_shared_teacher_code_consume', {
+      p_login: login,
+      p_code: code,
+      p_new_password: password,
+    });
+    const status = result?.ok ? 200 : (result?.code === 'RECOVERY_SERVICE_NOT_CONFIGURED' ? 503 : 400);
+    return send(res, status, result || { ok: false, code: 'PASSWORD_RESET_FAILED' });
+  }
+
   if (action === 'complete') {
     const token = typeof input.token === 'string' ? input.token.trim().slice(0, 512) : '';
     const password = typeof input.password === 'string' ? input.password : '';
