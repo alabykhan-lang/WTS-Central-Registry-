@@ -67,19 +67,19 @@ module.exports = async function accountRecovery(req, res) {
     return send(res, 200, ACCEPTED);
   }
 
-  // Teacher self-service with the shared WTS teacher code (no email needed).
-  // Used when a member of teaching staff needs to set or replace a password.
+  // Teacher self-service with the shared WTS teacher code (no email sending).
+  // Identified by the teacher's email address.
   if (action === 'shared_code' || action === 'teacher_code') {
-    const login = typeof input.login === 'string' ? input.login.trim().slice(0, 64) : '';
+    const email = typeof (input.email || input.login) === 'string' ? String(input.email || input.login).trim().slice(0, 254) : '';
     const code = typeof input.code === 'string' ? input.code.trim().slice(0, 64) : '';
     const password = typeof input.password === 'string' ? input.password : '';
     const confirmPassword = typeof input.confirmPassword === 'string' ? input.confirmPassword : '';
-    if (!login || !code) return send(res, 400, { ok: false, code: 'SHARED_TEACHER_CODE_REQUIRED' });
+    if (!email || !code) return send(res, 400, { ok: false, code: 'SHARED_TEACHER_CODE_REQUIRED' });
     if (!password || password !== confirmPassword || password.length > 512) {
       return send(res, 400, { ok: false, code: 'PASSWORD_CONFIRMATION_REQUIRED' });
     }
-    const result = await serviceRpc('school_identity_shared_teacher_code_consume', {
-      p_login: login,
+    const result = await serviceRpc('school_identity_teacher_code_reset_by_email', {
+      p_email: email,
       p_code: code,
       p_new_password: password,
     });

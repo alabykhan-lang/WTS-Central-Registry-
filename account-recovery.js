@@ -19,8 +19,8 @@
 
   function friendly(code) {
     return ({
-      SHARED_TEACHER_CODE_REQUIRED: 'Enter your Staff Number and the shared WTS teacher code.',
-      SHARED_TEACHER_CODE_INVALID: 'That Staff Number and teacher code did not match an active teacher record.',
+      SHARED_TEACHER_CODE_REQUIRED: 'Enter your staff email and the shared WTS teacher code.',
+      SHARED_TEACHER_CODE_INVALID: 'That email and teacher code did not match an active teacher record.',
       PASSWORD_CONFIRMATION_REQUIRED: 'Enter the new password twice, matching.',
       PASSWORD_REQUIREMENTS_NOT_MET: 'Use at least 10 characters with an uppercase letter, lowercase letter and number.',
       RECOVERY_TOKEN_REQUIRED: 'That link is incomplete. Use the teacher code instead.',
@@ -62,7 +62,7 @@
       ? { action: 'complete', token, password, confirmPassword }
       : {
           action: 'shared_code',
-          login: $('#recoveryLogin').value.trim(),
+          email: $('#recoveryLogin').value.trim(),
           code: $('#recoveryTeacherCode').value.trim(),
           password,
           confirmPassword,
