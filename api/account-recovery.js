@@ -83,8 +83,12 @@ module.exports = async function accountRecovery(req, res) {
       p_code: code,
       p_new_password: password,
     });
-    const status = result?.ok ? 200 : (result?.code === 'RECOVERY_SERVICE_NOT_CONFIGURED' ? 503 : 400);
-    return send(res, status, result || { ok: false, code: 'PASSWORD_RESET_FAILED' });
+    const rawCode = String(result?.code || '');
+    const safe = /^\d{5}$/.test(rawCode)
+      ? { ok: false, code: 'RECOVERY_SERVICE_UNAVAILABLE' }
+      : (result || { ok: false, code: 'PASSWORD_RESET_FAILED' });
+    const status = safe.ok ? 200 : (safe.code === 'RECOVERY_SERVICE_NOT_CONFIGURED' || safe.code === 'RECOVERY_SERVICE_UNAVAILABLE' ? 503 : 400);
+    return send(res, status, safe);
   }
 
   if (action === 'complete') {
