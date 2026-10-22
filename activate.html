@@ -14,21 +14,27 @@
     <section class="recovery-card">
       <div class="recovery-heading">
         <span class="recovery-kicker">STAFF PASSWORD</span>
-        <h1>Set or reset your password</h1>
-        <p>Use your Staff Number and the email or phone number already recorded in the Registry. No separate code or email confirmation is required.</p>
+        <h1>Reset your password</h1>
+        <p>We email a secure link to the address held in the Registry. The link works once and expires after 30 minutes.</p>
       </div>
       <div class="code-help">
-        <strong>How to use this page</strong>
-        <span>Your Staff Number and registered email or phone must match the active staff record.</span>
+        <strong>How this works</strong>
+        <span id="recoveryHowTo">Enter your Staff Number or the email the school holds for you, then open the link we send.</span>
       </div>
-      <form id="recoveryCodeForm" class="recovery-form">
-        <label>Staff Number<input id="recoveryLogin" autocomplete="username" required maxlength="254" placeholder="WTS/STF/000001"></label>
-        <label>Registered email or phone<input id="recoveryContact" autocomplete="email" required maxlength="254"></label>
+
+      <form id="recoveryRequestForm" class="recovery-form">
+        <label>Staff Number or registered email<input id="recoveryLogin" autocomplete="username" required maxlength="254" placeholder="WTS/STF/000001"></label>
+        <p class="form-help">For security we do not confirm whether a record exists — if it does, the email arrives within a minute.</p>
+        <button class="primary full" type="submit" id="recoveryRequestButton">Email me a reset link</button>
+      </form>
+
+      <form id="recoveryCodeForm" class="recovery-form" hidden>
         <label class="password-field">New password<div class="password-input-wrap"><input id="recoveryPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="512"><button type="button" class="password-toggle" data-password-toggle="recoveryPassword">Show password</button></div></label>
         <label class="password-field">Confirm password<div class="password-input-wrap"><input id="recoveryPasswordConfirm" type="password" autocomplete="new-password" required minlength="10" maxlength="512"><button type="button" class="password-toggle" data-password-toggle="recoveryPasswordConfirm">Show password</button></div></label>
         <p class="form-help">Use at least 10 characters with an uppercase letter, lowercase letter and number.</p>
         <button class="primary full" type="submit" id="recoveryCodeButton">Save password</button>
       </form>
+
       <div class="recovery-status" id="recoveryStatus" role="status" aria-live="polite"></div>
       <div class="recovery-links"><a href="/staff">Open School Portal sign-in</a><a href="/">Central Registry management sign-in</a></div>
     </section>

@@ -1,5 +1,11 @@
 'use strict';
 
+// Two-step, token-based recovery. "request" emails a single-use link;
+// "complete" consumes the token and sets the password. The old direct reset
+// (staff number + email/phone, no token) is deliberately gone — see the
+// 20261021_legacy_command_lockdown migration.
+const { issueAndSendRecoveryEmail, serviceRpc, configured } = require('../lib/recovery-email');
+
 const SUPABASE_URL = process.env.WTS_SUPABASE_URL || 'https://wuftzyeajmsxdrbwaawl.supabase.co';
 const SUPABASE_KEY = process.env.WTS_SUPABASE_PUBLISHABLE_KEY
   || process.env.SUPABASE_PUBLISHABLE_KEY
@@ -36,17 +42,43 @@ async function resetPassword(payload) {
   const result = await response.json().catch(() => ({ ok: false, code: 'PASSWORD_RESET_FAILED' }));
   return response.ok ? result : { ok: false, code: result?.code || 'PASSWORD_RESET_FAILED' };
 }
+const ACCEPTED = {
+  ok: true,
+  code: 'RECOVERY_REQUEST_ACCEPTED',
+  message: 'If that staff record exists, a secure reset link has been emailed to the address on file.',
+};
+
 module.exports = async function accountRecovery(req, res) {
   if (!originAllowed(req)) return send(res, 403, { ok: false, code: 'ORIGIN_NOT_ALLOWED' });
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return send(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' }); }
   const input = await body(req);
   if (!input || typeof input !== 'object' || Array.isArray(input)) return send(res, 400, { ok: false, code: 'INVALID_REQUEST' });
-  if (String(input.action || '').toLowerCase() !== 'reset') return send(res, 400, { ok: false, code: 'RECOVERY_ACTION_REQUIRED' });
-  const login = typeof input.login === 'string' ? input.login.trim() : '';
-  const contact = typeof input.contact === 'string' ? input.contact.trim() : '';
-  const password = typeof input.password === 'string' ? input.password : '';
-  const confirmPassword = typeof input.confirmPassword === 'string' ? input.confirmPassword : '';
-  if (!login || !contact || !password || password !== confirmPassword || password.length > 512) return send(res, 400, { ok: false, code: 'PASSWORD_RESET_INPUT_REQUIRED' });
-  const result = await resetPassword({ p_login: login, p_contact: contact, p_new_password: password });
-  return send(res, result?.ok ? 200 : result?.code === 'ACCOUNT_TEMPORARILY_LOCKED' ? 429 : 400, result);
+
+  const action = String(input.action || '').toLowerCase();
+
+  // "reset" is the old client contract: it no longer resets anything, it only
+  // triggers the email, so a cached old page cannot skip the token step.
+  if (action === 'request' || action === 'reset') {
+    const login = typeof input.login === 'string' ? input.login.trim().slice(0, 254) : '';
+    if (!login) return send(res, 400, { ok: false, code: 'RECOVERY_LOGIN_REQUIRED' });
+    if (!configured()) return send(res, 503, { ok: false, code: 'RECOVERY_EMAIL_NOT_CONFIGURED' });
+    const purpose = input.purpose === 'activation' ? 'activation' : 'password_reset';
+    try { await issueAndSendRecoveryEmail({ login, purpose }); } catch { /* never leak whether the record exists */ }
+    return send(res, 200, ACCEPTED);
+  }
+
+  if (action === 'complete') {
+    const token = typeof input.token === 'string' ? input.token.trim().slice(0, 512) : '';
+    const password = typeof input.password === 'string' ? input.password : '';
+    const confirmPassword = typeof input.confirmPassword === 'string' ? input.confirmPassword : '';
+    if (!token) return send(res, 400, { ok: false, code: 'RECOVERY_TOKEN_REQUIRED' });
+    if (!password || password !== confirmPassword || password.length > 512) {
+      return send(res, 400, { ok: false, code: 'PASSWORD_CONFIRMATION_REQUIRED' });
+    }
+    const result = await serviceRpc('school_identity_recovery_consume', { p_token: token, p_new_password: password });
+    const status = result?.ok ? 200 : (result?.code === 'RECOVERY_SERVICE_NOT_CONFIGURED' ? 503 : 400);
+    return send(res, status, result || { ok: false, code: 'PASSWORD_RESET_FAILED' });
+  }
+
+  return send(res, 400, { ok: false, code: 'RECOVERY_ACTION_REQUIRED' });
 };
