@@ -101,10 +101,4 @@ body:not(.locked) {
   .registry-main {
     padding-bottom: 28px !important;
   }
-  .sidebar-footer {
-    position: sticky;
-    bottom: 0;
-    padding-top: 10px;
-    background: inherit;
-  }
 }
