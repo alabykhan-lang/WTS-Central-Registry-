@@ -75,3 +75,36 @@ nav.wts-global-portal-nav {
 body {
   padding-bottom: 44px !important;
 }
+
+/* ---- Bottom bar clearance -------------------------------------------------
+   The shared Dashboard / Registry / Results bar is fixed, 46px tall and sits
+   at z-index max, so anything underneath it is unreachable. The page used 44px
+   and the phone rule reset it to 0, which is why the bar sat on top of the
+   registry content and hid the "Registry connected" line in the phone drawer. */
+body,
+body:not(.locked) {
+  padding-bottom: 58px !important;
+}
+.registry-sidebar {
+  padding-bottom: 78px !important;
+  overflow-y: auto;
+}
+@media (max-width: 760px) {
+  body:not(.locked) {
+    padding-bottom: 58px !important;
+  }
+  .registry-sidebar {
+    height: 100vh !important;
+    height: 100svh !important;
+    padding-bottom: 78px !important;
+  }
+  .registry-main {
+    padding-bottom: 28px !important;
+  }
+  .sidebar-footer {
+    position: sticky;
+    bottom: 0;
+    padding-top: 10px;
+    background: inherit;
+  }
+}
