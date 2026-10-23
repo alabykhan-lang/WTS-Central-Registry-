@@ -40,15 +40,19 @@ html.sso-requested body.locked #loginForm > .staff-registration-cta { display: n
 #staffDirectoryDetails .table-wrap{overflow-x:auto}
 #staffRows tr.clickable-row{cursor:pointer}
 #staffRows tr.clickable-row:hover{background:#f3f8fb}
+:root { --wts-bar-h: 46px; }
 .wts-global-portal-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
+  height: var(--wts-bar-h);
+  box-sizing: border-box;
+  align-items: center;
   background-color: #04101e;
   display: flex;
   justify-content: space-around;
-  padding: 10px 0;
+  padding: 0;
   z-index: 2147483647; /* Ensure it is always above everything */
   box-shadow: 0 -2px 10px rgba(0,0,0,0.4);
   border-top: 1px solid rgba(255,255,255,0.1);
@@ -76,27 +80,58 @@ body {
   padding-bottom: 44px !important;
 }
 
-/* ---- Bottom bar clearance -------------------------------------------------
-   The shared Dashboard / Registry / Results bar is fixed, 46px tall and sits
-   at z-index max, so anything underneath it is unreachable. The page used 44px
-   and the phone rule reset it to 0, which is why the bar sat on top of the
-   registry content and hid the "Registry connected" line in the phone drawer. */
+/* ---- Bottom bars: one height value drives everything ---------------------
+   The shared Dashboard / Registry / Results bar is fixed at --wts-bar-h.
+   The Registry has its own section menu stacked directly on top of it, the
+   same way the Result Portal does, so page content must clear both. */
 body,
 body:not(.locked) {
-  padding-bottom: 58px !important;
+  padding-bottom: calc(var(--wts-bar-h) + 12px) !important;
 }
 .registry-sidebar {
-  padding-bottom: 78px !important;
+  padding-bottom: calc(var(--wts-bar-h) + 32px) !important;
   overflow-y: auto;
 }
+
+.registry-module-nav { display: none; }
+
 @media (max-width: 760px) {
+  .registry-module-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--wts-bar-h);
+    z-index: 45;                      /* under the drawer (50/60) */
+    overflow-x: auto;
+    background: #0b2a4e;
+    border-top: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 -2px 8px rgba(0,0,0,.28);
+  }
+  .registry-module-nav button {
+    flex: 1 0 auto;
+    min-width: 74px;
+    padding: 12px 10px;
+    border: 0;
+    border-top: 3px solid transparent;
+    background: transparent;
+    color: #c8d8e8;
+    font: 700 12px/1 Inter, Arial, sans-serif;
+    letter-spacing: .02em;
+    white-space: nowrap;
+  }
+  .registry-module-nav button.active {
+    color: #fff;
+    border-top-color: var(--wts-gold, #d6a84f);
+    background: rgba(214,168,79,.16);
+  }
   body:not(.locked) {
-    padding-bottom: 58px !important;
+    padding-bottom: calc(var(--wts-bar-h) + 56px) !important;
   }
   .registry-sidebar {
     height: 100vh !important;
     height: 100svh !important;
-    padding-bottom: 78px !important;
+    padding-bottom: calc(var(--wts-bar-h) + 32px) !important;
   }
   .registry-main {
     padding-bottom: 28px !important;
