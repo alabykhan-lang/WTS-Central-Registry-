@@ -97,27 +97,32 @@ body:not(.locked) {
 
 @media (max-width: 760px) {
   .registry-module-nav {
-    display: flex;
+    display: flex !important;
     position: fixed;
     left: 0;
     right: 0;
     bottom: var(--wts-bar-h);
+    /* the legacy mobile sheet sets nav{display:grid;height:100%} — neutralise it */
+    height: auto !important;
+    grid-template-columns: none !important;
     z-index: 45;                      /* under the drawer (50/60) */
     overflow-x: auto;
+    scrollbar-width: none;
     background: #0b2a4e;
     border-top: 1px solid rgba(255,255,255,.14);
     box-shadow: 0 -2px 8px rgba(0,0,0,.28);
   }
+  .registry-module-nav::-webkit-scrollbar { display: none; }
   .registry-module-nav button {
-    flex: 1 0 auto;
-    min-width: 74px;
-    padding: 12px 10px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 12px 3px;
     border: 0;
     border-top: 3px solid transparent;
     background: transparent;
     color: #c8d8e8;
-    font: 700 12px/1 Inter, Arial, sans-serif;
-    letter-spacing: .02em;
+    font: 700 11px/1.15 Inter, Arial, sans-serif;
+    letter-spacing: 0;
     white-space: nowrap;
   }
   .registry-module-nav button.active {
