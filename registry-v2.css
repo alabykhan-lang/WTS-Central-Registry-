@@ -61,7 +61,7 @@ html.sso-requested body.locked #loginForm > .staff-registration-cta { display: n
    which stretched this fixed bar over the whole screen (blank registry on phones). */
 nav.wts-global-portal-nav {
   top: auto !important;
-  height: auto !important;
+  height: var(--wts-bar-h) !important;
   display: flex !important;
   grid-template-columns: none !important;
 }
