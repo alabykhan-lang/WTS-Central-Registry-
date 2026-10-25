@@ -16,52 +16,75 @@
 </head>
 <body class="locked">
 
-<!-- 3D intro (5.5s, tap to skip) -->
+<!-- 3D intro (JS-driven, ~5.5s, tap to skip) -->
 <style>
-html:has(#portalIntro){overflow:hidden}
-.portalIntro{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.4rem;background:radial-gradient(120% 90% at 50% 20%,#0d2a4d 0%,#071527 55%,#030b16 100%);cursor:pointer;perspective:1100px;overflow:hidden;animation:portalIntroBg 4.6s ease-out forwards}
-.portalIntro--leaving{animation:portalIntroOut .9s ease forwards;pointer-events:none}
-.portalIntro__scene{position:relative;width:190px;height:190px;transform-style:preserve-3d;animation:portalIntroOrbit 4.2s cubic-bezier(.35,.9,.4,1) forwards}
-.portalIntro__badge{position:absolute;inset:0;transform-style:preserve-3d;animation:portalIntroFlip 2.6s cubic-bezier(.3,1.1,.4,1) forwards,portalIntroHover 2.6s 1.4s ease-in-out infinite alternate}
-.portalIntro__badgeFace{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:50%;backface-visibility:hidden;background:linear-gradient(150deg,#f8fbff,#cfe0f2 60%,#9fbcd8);box-shadow:0 24px 60px rgba(2,12,26,.55),0 0 0 1px rgba(255,255,255,.35) inset}
-.portalIntro__badgeFace img{width:74%;height:74%;object-fit:contain;border-radius:50%}
-.portalIntro__ring{position:absolute;inset:-26px;border-radius:50%;border:2px solid rgba(120,190,255,.5);transform:rotateX(72deg);animation:portalIntroRing 2.8s cubic-bezier(.2,.8,.3,1) forwards}
-.portalIntro__ring--second{inset:-48px;border-color:rgba(120,190,255,.22);animation-delay:.35s}
-.portalIntro__wordmark{display:flex;gap:.45em;font-size:clamp(1.5rem,6vw,2.4rem);font-weight:800;color:#eef6ff;perspective:600px}
-.portalIntro__word{display:inline-block;opacity:0;transform:translateY(26px) rotateX(75deg);animation:portalIntroWord .9s cubic-bezier(.2,.9,.3,1.2) forwards}
-.portalIntro__word:nth-child(1){animation-delay:1.35s}
-.portalIntro__word:nth-child(2){animation-delay:1.6s}
-.portalIntro__word:nth-child(3){animation-delay:1.85s;text-shadow:0 2px 24px rgba(96,180,255,.55)}
-.portalIntro__sub{margin:0;color:#8fbede;font-size:.95rem;letter-spacing:.18em;text-transform:uppercase;opacity:0;animation:portalIntroSub 1s 2.5s ease forwards}
-.portalIntro__skip{position:absolute;right:18px;bottom:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#cfe4f6;padding:.45rem 1.1rem;border-radius:999px;font-size:.85rem;opacity:0;animation:portalIntroSub .6s 1s ease forwards}
-@keyframes portalIntroBg{from{filter:brightness(.4)}to{filter:brightness(1)}}
-@keyframes portalIntroOrbit{0%{transform:rotateY(-30deg) rotateX(14deg) translateZ(-140px) scale(.6)}55%{transform:rotateY(22deg) rotateX(-8deg) translateZ(0) scale(1)}100%{transform:rotateY(0deg) rotateX(6deg) translateZ(0) scale(1.04)}}
-@keyframes portalIntroFlip{0%{transform:rotateY(540deg) scale(.4);opacity:0}60%{transform:rotateY(20deg) scale(1);opacity:1}100%{transform:rotateY(0deg) scale(1);opacity:1}}
-@keyframes portalIntroHover{from{transform:rotateY(-14deg) rotateZ(-3deg)}to{transform:rotateY(14deg) rotateZ(3deg)}}
-@keyframes portalIntroRing{0%{transform:rotateX(72deg) scale(.35);opacity:0}45%{opacity:.9}100%{transform:rotateX(72deg) scale(1.15) rotateZ(180deg);opacity:.15}}
-@keyframes portalIntroWord{to{opacity:1;transform:none}}
-@keyframes portalIntroSub{to{opacity:1}}
-@keyframes portalIntroOut{to{opacity:0;transform:scale(1.18);filter:blur(6px)}}
+html.pintro-lock{overflow:hidden}
+.portalIntro{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.4rem;background:radial-gradient(120% 90% at 50% 20%,#0d2a4d 0%,#071527 55%,#030b16 100%);cursor:pointer;overflow:hidden;perspective:1100px}
+.portalIntro__scene{position:relative;width:190px;height:190px;transform-style:preserve-3d;will-change:transform}
+.portalIntro__badge{position:absolute;inset:0;border-radius:50%;background:linear-gradient(150deg,#f8fbff,#cfe0f2 60%,#9fbcd8);box-shadow:0 24px 60px rgba(2,12,26,.55),0 0 0 1px rgba(255,255,255,.35) inset;display:flex;align-items:center;justify-content:center;will-change:transform,opacity}
+.portalIntro__badge img{width:74%;height:74%;object-fit:contain;border-radius:50%}
+.portalIntro__ring{position:absolute;inset:-26px;border-radius:50%;border:2px solid rgba(120,190,255,.5);opacity:.8}
+.portalIntro__ring--second{inset:-48px;border-color:rgba(120,190,255,.22);opacity:.5}
+.portalIntro__wordmark{display:flex;gap:.45em;font-size:clamp(1.5rem,6vw,2.4rem);font-weight:800;color:#eef6ff}
+.portalIntro__word{display:inline-block;opacity:0;will-change:transform,opacity;text-shadow:0 2px 24px rgba(96,180,255,.4)}
+.portalIntro__sub{margin:0;color:#8fbede;font-size:.95rem;letter-spacing:.18em;text-transform:uppercase;opacity:0}
+.portalIntro__skip{position:absolute;right:18px;bottom:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#cfe4f6;padding:.45rem 1.1rem;border-radius:999px;font-size:.85rem}
 </style>
 <div class="portalIntro" id="portalIntro" role="presentation">
-  <div class="portalIntro__scene">
-    <div class="portalIntro__ring"></div>
-    <div class="portalIntro__ring portalIntro__ring--second"></div>
-    <div class="portalIntro__badge"><div class="portalIntro__badgeFace portalIntro__badgeFace--front"><img src="/public-school-logo.webp" alt=""></div></div>
+  <div class="portalIntro__scene" id="pintroScene">
+    <div class="portalIntro__ring" id="pintroRing1"></div>
+    <div class="portalIntro__ring portalIntro__ring--second" id="pintroRing2"></div>
+    <div class="portalIntro__badge" id="pintroBadge"><img src="/public-school-logo.webp" alt=""></div>
   </div>
-  <div class="portalIntro__wordmark"><span class="portalIntro__word">Way</span> <span class="portalIntro__word">to</span> <span class="portalIntro__word">Success</span></div>
-  <p class="portalIntro__sub">Central Registry &middot; Ejigbo</p>
-  <button class="portalIntro__skip" type="button" onclick="portalIntroEnd()">Skip</button>
+  <div class="portalIntro__wordmark"><span class="portalIntro__word" id="pintroW1">Way</span> <span class="portalIntro__word" id="pintroW2">to</span> <span class="portalIntro__word" id="pintroW3">Success</span></div>
+  <p class="portalIntro__sub" id="pintroSub">Standard Schools &middot; Ejigbo</p>
+  <button class="portalIntro__skip" type="button" id="pintroSkip">Skip</button>
 </div>
 <script>
 (function(){
   var el=document.getElementById('portalIntro');if(!el)return;
-  function end(){el.classList.add('portalIntro--leaving');setTimeout(function(){el.remove();},900);}
-  window.portalIntroEnd=end;
-  el.addEventListener('click',end);
-  setTimeout(end,5200);
+  document.documentElement.classList.add('pintro-lock');
+  var badge=document.getElementById('pintroBadge'),scene=document.getElementById('pintroScene');
+  var rings=[document.getElementById('pintroRing1'),document.getElementById('pintroRing2')];
+  var words=[document.getElementById('pintroW1'),document.getElementById('pintroW2'),document.getElementById('pintroW3')];
+  var sub=document.getElementById('pintroSub');
+  var DUR=5200,FULL=DUR+800,skipped=false,started=null;
+  function ease(t){return 1-Math.pow(1-t,3);}
+  function set(o,k,v){o.style.opacity=v;}
+  function frame(now){
+    if(started===null)started=now;
+    var t=Math.min(Math.max((now-started)/DUR,0),1);
+    var b,inT=Math.min(t/0.5,1);
+    if(t<0.5){b=1-ease(inT);}else{b=0.06*Math.sin((t-0.5)*12.56);}
+    badge.style.opacity=String(Math.min(1,inT*2.2));
+    badge.style.transform='rotateY('+((1-ease(inT))*540)+'deg) scale('+(0.55+0.45*ease(inT))+')'+(t>=0.5?' rotateZ('+(b*3)+'deg) rotateY('+(b*12)+'deg)':'');
+    scene.style.transform='translateZ(0) scale('+(0.7+0.3*ease(Math.min(t/0.7,1)))+')';
+    var r1=0.8*ease(Math.min(t/0.45,1))*(1+0.3*Math.sin(t*6.28));
+    rings[0].style.transform='rotateX(72deg) scale('+(0.35+0.8*ease(Math.min(t/0.45,1)))+')';
+    rings[0].style.opacity=String(Math.max(0,0.85-t*0.6));
+    rings[1].style.transform='rotateX(72deg) scale('+(0.3+0.85*ease(Math.min(Math.max(t-0.08,0)/0.5,1)))+')';
+    rings[1].style.opacity=String(Math.max(0,0.5-t*0.4));
+    var wl=[1.35/5.2,1.6/5.2,1.85/5.2];
+    for(var i=0;i<words.length;i++){
+      var wt=Math.min(Math.max((t-wl[i])/0.17,0),1),e=1-Math.pow(1-wt,3);
+      words[i].style.opacity=String(e);
+      words[i].style.transform='translateY('+((1-e)*26)+'px) rotateX('+((1-e)*75)+'deg)';
+    }
+    sub.style.opacity=String(Math.min(Math.max((t-2.5/5.2)/0.19,0),1));
+    el.style.background='radial-gradient(120% 90% at 50% 20%,#0d2a4d 0%,#071527 55%,#030b16 100%)';
+    if(now-started<DUR&&!skipped){requestAnimationFrame(frame);}
+    else{out();}
+  }
+  function out(){
+    if(skipped)return;skipped=true;
+    var o=1;var iv=setInterval(function(){o-=0.12;el.style.opacity=String(Math.max(0,o));el.style.transform='scale('+(1+(1-Math.max(0,o))*0.18)+')';if(o<=0){clearInterval(iv);el.remove();document.documentElement.classList.remove('pintro-lock');if(window.portalIntroDone)window.portalIntroDone();}},40);
+  }
+  window.portalIntroEnd=out;
+  el.addEventListener('click',out);
+  requestAnimationFrame(frame);
 })();
 </script>
+
 
   <section class="auth-gate" id="authGate">
     <div class="auth-card" id="authCard">
