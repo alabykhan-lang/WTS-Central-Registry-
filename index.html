@@ -57,7 +57,7 @@ html.pintro-lock{overflow:hidden}
     var b,inT=Math.min(t/0.5,1);
     if(t<0.5){b=1-ease(inT);}else{b=0.06*Math.sin((t-0.5)*12.56);}
     badge.style.opacity=String(Math.min(1,inT*2.2));
-    badge.style.transform='rotateY('+((1-ease(inT))*540)+'deg) scale('+(0.55+0.45*ease(inT))+')'+(t>=0.5?' rotateZ('+(b*3)+'deg) rotateY('+(b*12)+'deg)':'');
+    badge.style.transform='rotateY('+((1-ease(inT))*360)+'deg) scale('+(0.55+0.45*ease(inT))+')'+(t>=0.5?' rotateZ('+(b*3)+'deg) rotateY('+(b*12)+'deg)':'');
     scene.style.transform='translateZ(0) scale('+(0.7+0.3*ease(Math.min(t/0.7,1)))+')';
     var r1=0.8*ease(Math.min(t/0.45,1))*(1+0.3*Math.sin(t*6.28));
     rings[0].style.transform='rotateX(72deg) scale('+(0.35+0.8*ease(Math.min(t/0.45,1)))+')';
