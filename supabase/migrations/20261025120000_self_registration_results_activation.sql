@@ -70,14 +70,6 @@ begin
     'self_registration','active',now(),v_person_id,v_whatsapp,'en'
   ) returning id,staff_number into v_staff_id,v_staff_number;
 
-  insert into public.user_profiles(email, full_name, role)
-  values (v_email, v_name, 'teacher')
-  returning id into v_result_user_id;
-
-  update public.staff_attendance_profiles
-  set user_profile_id=v_result_user_id, updated_at=now()
-  where id=v_staff_id;
-
   update public.school_staff_registrations
   set approved_staff_id=v_staff_id, updated_at=now()
   where id=v_registration_id;
@@ -96,6 +88,16 @@ begin
     v_account_id,v_person_id,v_staff_number,crypt(v_password,gen_salt('bf',12)),'active',
     false,0,null,now(),now()
   );
+
+  -- Results identity link last: linking user_profile_id too early makes a
+  -- staff-profile trigger auto-create the identity account and collide.
+  insert into public.user_profiles(email, full_name, role)
+  values (v_email, v_name, 'teacher')
+  returning id into v_result_user_id;
+
+  update public.staff_attendance_profiles
+  set user_profile_id=v_result_user_id, updated_at=now()
+  where id=v_staff_id;
 
   insert into public.school_registry_audit(
     actor_type,actor_id,action,entity_type,entity_id,details
