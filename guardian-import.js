@@ -130,8 +130,20 @@
 
   async function loadRoster() {
     if (rosterLoaded) return indexRoster(roster);
-    const result = await registryCall('read', 'students', { status: 'active' });
-    roster = (result.students || []).filter((s) => !s.archived);
+    // `students` with no class is capped at 200 rows, so pull the roster class by class instead.
+    const classes = await registryCall('read', 'catalog', {});
+    const seen = new Map();
+    const classKeys = (classes.classes || []).map((c) => c.class_key).filter(Boolean);
+    if (!classKeys.length) throw Object.assign(new Error('NO_CLASSES'), { code: 'NO_CLASSES' });
+    for (const classKey of classKeys) {
+      const result = await registryCall('read', 'students', { status: 'active', classKey });
+      (result.students || []).forEach((s) => {
+        if (s.archived) return;
+        const key = s.id || s.student_id || (s.name + '|' + s.class_key);
+        if (!seen.has(key)) seen.set(key, s);
+      });
+    }
+    roster = [...seen.values()];
     rosterLoaded = true;
     return indexRoster(roster);
   }
