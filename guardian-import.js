@@ -216,7 +216,7 @@
     for (const row of ready) {
       row.state = 'saving';
       render();
-      const surname = String(row.student.name || '').trim().split(/\s+/).slice(-1)[0] || 'Guardian';
+      const surname = String(row.student.name || '').trim().split(/\s+/)[0] || 'Guardian';
       const guardianName = row.father ? 'Mr. ' + surname : 'Mrs. ' + surname;
       try {
         await registryCall('write', 'guardian.upsert', {
