@@ -6,7 +6,11 @@ const COOKIE_NAME='wts_registry_session';
 const ORIGINS=new Set(['https://wts-central-registry.vercel.app']);
 
 function send(res,status,payload){res.statusCode=status;res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(payload));}
-function session(req){const raw=String(req.headers.cookie||'').split(';').find((part)=>part.trim().startsWith(`${COOKIE_NAME}=`))?.split('=').slice(1).join('=')||'';let value='';try{value=decodeURIComponent(raw);}catch{return null;}const dot=value.indexOf('.');return dot>0&&dot<value.length-1?{id:value.slice(0,dot),secret:value.slice(dot+1)}:null;}
+function session(req){
+  // A server-side agent sends the session as "Authorization: Bearer <id>.<secret>".
+  const __bearer = /^Bearer\s+([0-9a-fA-F-]{36})\.([A-Za-z0-9._~-]{16,})$/.exec(String(req.headers.authorization || '').trim());
+  if (__bearer) return { id: __bearer[1], secret: __bearer[2] };
+const raw=String(req.headers.cookie||'').split(';').find((part)=>part.trim().startsWith(`${COOKIE_NAME}=`))?.split('=').slice(1).join('=')||'';let value='';try{value=decodeURIComponent(raw);}catch{return null;}const dot=value.indexOf('.');return dot>0&&dot<value.length-1?{id:value.slice(0,dot),secret:value.slice(dot+1)}:null;}
 async function body(req){if(req.body&&typeof req.body==='object')return req.body;let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>600*1024)return null;}try{return raw?JSON.parse(raw):{};}catch{return null;}}
 async function rpc(name,payload){try{const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`},body:JSON.stringify(payload)});const result=await response.json().catch(()=>({ok:false,code:'REGISTRY_SERVICE_INVALID_RESPONSE'}));return response.ok?result:{ok:false,code:result.code||'REGISTRY_SERVICE_UNAVAILABLE'};}catch{return {ok:false,code:'REGISTRY_SERVICE_UNAVAILABLE'};}}
 function validImage(mime,buffer){if(mime==='image/png')return buffer.length>=8&&buffer.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]));if(mime==='image/jpeg')return buffer.length>=3&&buffer[0]===0xff&&buffer[1]===0xd8&&buffer[2]===0xff;if(mime==='image/webp')return buffer.length>=12&&buffer.subarray(0,4).toString('ascii')==='RIFF'&&buffer.subarray(8,12).toString('ascii')==='WEBP';return false;}

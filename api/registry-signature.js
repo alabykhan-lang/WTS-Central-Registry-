@@ -14,6 +14,10 @@ function send(res, status, body) {
 function originAllowed(req) { const origin=String(req.headers.origin || '').trim(); return !origin || ALLOWED_ORIGINS.has(origin) || String(process.env.WTS_REGISTRY_ALLOWED_ORIGINS || '').split(',').map((value)=>value.trim()).filter(Boolean).includes(origin); }
 function storagePath(path) { return path.split('/').map((segment)=>encodeURIComponent(segment)).join('/'); }
 function session(req) {
+  // A server-side agent sends the session as "Authorization: Bearer <id>.<secret>".
+  const __bearer = /^Bearer\s+([0-9a-fA-F-]{36})\.([A-Za-z0-9._~-]{16,})$/.exec(String(req.headers.authorization || '').trim());
+  if (__bearer) return { id: __bearer[1], secret: __bearer[2] };
+
   const raw = String(req.headers.cookie || '').split(';').find((part) => part.trim().startsWith(`${COOKIE_NAME}=`))?.split('=').slice(1).join('=') || '';
   let value = ''; try { value = decodeURIComponent(raw); } catch { return null; }
   const dot = value.indexOf('.'); return dot > 0 && dot < value.length - 1 ? { id:value.slice(0,dot), secret:value.slice(dot+1) } : null;

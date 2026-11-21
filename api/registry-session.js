@@ -51,6 +51,10 @@ function cookies(req) {
 }
 
 function session(req) {
+  // A server-side agent sends the session as "Authorization: Bearer <id>.<secret>".
+  const __bearer = /^Bearer\s+([0-9a-fA-F-]{36})\.([A-Za-z0-9._~-]{16,})$/.exec(String(req.headers.authorization || '').trim());
+  if (__bearer) return { id: __bearer[1], secret: __bearer[2] };
+
   const value = cookies(req)[COOKIE_NAME] || '';
   const separator = value.indexOf('.');
   if (separator <= 0 || separator === value.length - 1) return null;
