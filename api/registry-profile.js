@@ -8,7 +8,7 @@ const ORIGINS=new Set(['https://wts-central-registry.vercel.app']);
 function send(res,status,payload,clear=false){res.statusCode=status;res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');res.setHeader('Content-Type','application/json; charset=utf-8');if(clear)res.setHeader('Set-Cookie',`${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);res.end(JSON.stringify(payload));}
 function session(req){
   // A server-side agent sends the session as "Authorization: Bearer <id>.<secret>".
-  const __bearer = /^Bearer\s+([0-9a-fA-F-]{36})\.([A-Za-z0-9._~-]{16,})$/.exec(String(req.headers.authorization || '').trim());
+  const __bearer = /^Bearer\s+([0-9a-fA-F-]{36})\.([^\s]{16,200})$/.exec(String(req.headers.authorization || '').trim());
   if (__bearer) return { id: __bearer[1], secret: __bearer[2] };
 const raw=String(req.headers.cookie||'').split(';').find((part)=>part.trim().startsWith(`${COOKIE_NAME}=`))?.split('=').slice(1).join('=')||'';let value='';try{value=decodeURIComponent(raw);}catch{return null;}const dot=value.indexOf('.');return dot>0&&dot<value.length-1?{id:value.slice(0,dot),secret:value.slice(dot+1)}:null;}
 async function body(req){if(req.body&&typeof req.body==='object')return req.body;let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>32*1024)return null;}try{return raw?JSON.parse(raw):{};}catch{return null;}}
